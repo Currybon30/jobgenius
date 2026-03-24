@@ -4,8 +4,10 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 import pymupdf
-from internal_db.skills import soft_skills, it_skills, business_skills
+from internal_db.skills import SOFT_SKILL_NORMALIZATION, IT_SKILL_NORMALIZATION, BUSINESS_SKILL_NORMALIZATION
 from jd import extract_skills_from_jd_text
+from app.config import AI_MODEL_NAME, OLLAMA_HOST
+from app.helpers.resume_helpers import normalize_text, match_variants
 
 
 def extract_text_from_resume(file_path: str):
@@ -25,60 +27,66 @@ def extract_text_from_resume(file_path: str):
         print(f"Error extracting text from resume: {e}")
         return ""
     
+    
+def extract_contact_info(text: str):
+    # Use regex to find potential email addresses and phone numbers
+    email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+    phone_pattern = r'\+?\d{1,4}?[-.\s]?\(?\d{1,3}?\)?[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}'
+    
+    emails = re.findall(email_pattern, text)
+    phones = re.findall(phone_pattern, text)
+    
+    return {
+        "emails": emails,
+        "phone_numbers": phones
+    }
+    
 def extract_soft_skills_from_text(text: str):
-    found_soft_skills = set()
-    for soft_skill in soft_skills:
-        if soft_skill.lower() in text.lower():
-            found_soft_skills.add(soft_skill)
-    missing_soft_skills = set(soft_skills) - found_soft_skills
-    return found_soft_skills, missing_soft_skills
+    text = normalize_text(text)
+    found_soft_skills = {
+        canonical for canonical, variants in SOFT_SKILL_NORMALIZATION.items()
+        if match_variants(text, variants)
+    }
+    return list(found_soft_skills)
     
     
 def extract_skills_from_text_without_jd(text: str, field: str):
-    found_skills = set()
-    found_soft_skills, missing_soft_skills = extract_soft_skills_from_text(text)
+    text = normalize_text(text)
+    found_soft_skills = extract_soft_skills_from_text(text)
     if field == 'it':
-        skills_to_check = it_skills
+        skills_to_check = IT_SKILL_NORMALIZATION
     elif field == 'business':
-        skills_to_check = business_skills
+        skills_to_check = BUSINESS_SKILL_NORMALIZATION
     else:
-        print(f"Unknown field: {field}")
-        return {"skills": [], "missing_skills": [], "matching_score": 0}
+        return {"skills": [], "soft_skills": found_soft_skills}
     
-    for skill in skills_to_check:
-        if skill.lower() in text.lower():
-            found_skills.add(skill)
-    missing_skills = set(skills_to_check) - found_skills
-    
-    for soft_skill in soft_skills:
-        if soft_skill.lower() in text.lower():
-            found_soft_skills.add(soft_skill)
+    found_skills = {
+        canonical for canonical, variants in skills_to_check.items()
+        if match_variants(text, variants)
+    }
             
-    matching_score = len(found_skills) / len(skills_to_check) * 100 if skills_to_check else 0
     return {
         "skills": list(found_skills),
-        "missing_skills": list(missing_skills),
         "soft_skills": list(found_soft_skills),
-        "missing_soft_skills": list(missing_soft_skills),
-        "matching_score": matching_score
     }
     
 
 def extract_skills_from_text_with_jd(text: str, jd_text: str):
+    text = normalize_text(text)
     jd_skills = extract_skills_from_jd_text(jd_text)
-    found_skills = set()
-    found_soft_skills, missing_soft_skills = extract_soft_skills_from_text(text)
-    for skill in jd_skills:
-        if skill.lower() in text.lower():
-            found_skills.add(skill)
+    found_soft_skills = extract_soft_skills_from_text(text)
+    all_skills = {**IT_SKILL_NORMALIZATION, **BUSINESS_SKILL_NORMALIZATION}
+    found_skills = {
+        canonical for canonical, variants in all_skills.items()
+        if match_variants(text, variants) and canonical in jd_skills
+    }
     missing_skills = set(jd_skills) - found_skills
     matching_score = len(found_skills) / len(jd_skills) * 100 if jd_skills else 0
     return {
         "skills": list(found_skills),
-        "missing_skills": list(missing_skills),
-        "matching_score": matching_score,
-        "soft_skills": list(found_soft_skills),
-        "missing_soft_skills": list(missing_soft_skills)
+        "missing_skills": list(missing_skills)[:5],  # Limit to top 5 missing skills for free users
+        "matching_score": round(matching_score, 2),
+        "soft_skills": list(found_soft_skills)
     }
 
 ############################ Advanced features using AI #########################################
@@ -106,7 +114,7 @@ async def extract_skills_with_ai(text: str):
             """
         }
     ]
-    response = await AsyncClient(host='http://localhost:11434').chat(model='qwen2.5:7b', messages=messages)
+    response = await AsyncClient(host=OLLAMA_HOST).chat(model=AI_MODEL_NAME, messages=messages)
     
     if __name__ == "__main__":
         print("\n\n\n\n\n")
@@ -134,30 +142,21 @@ async def extract_skills_with_ai(text: str):
         "soft_skills": soft_skills
     }
     
-
-def extract_contact_info(text: str):
-    # Use regex to find potential email addresses and phone numbers
-    email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
-    phone_pattern = r'\+?\d{1,4}?[-.\s]?\(?\d{1,3}?\)?[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}'
-    
-    emails = re.findall(email_pattern, text)
-    phones = re.findall(phone_pattern, text)
-    
-    return {
-        "emails": emails,
-        "phone_numbers": phones
-    }
-    
     
 
 ############################ TESTING #########################################
+from resume_ai_feedback import resume_feedback_free_tier
 if __name__ == "__main__":
     pdf_path = r"D:\IT\My Projects\job_recommender_system\api_server\external_resources\Tuong Nguyen Pham Resume.pdf"
     resume_text = extract_text_from_resume(pdf_path)
     
     skills = extract_skills_from_text_without_jd(resume_text, 'it')
-    print("Extracted Skills without JD:", skills)
+
+    skills = skills['skills'] + skills['soft_skills']
+    missing_skills = None
+    jd_text = None
+    matching_score = None
     
-    skills_ai = asyncio.run(extract_skills_with_ai(resume_text))
-    print("Extracted Skills with AI:", skills_ai)
-    
+
+    resume_feedback = asyncio.run(resume_feedback_free_tier(skills, missing_skills, matching_score, jd_text, resume_text))
+    print("AI Resume Feedback:", resume_feedback)

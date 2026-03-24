@@ -2,13 +2,18 @@
 
 import sys
 import os
-from typing import List
-from internal_db.skills import it_skills, business_skills
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+from typing import List
+from internal_db.skills import IT_SKILL_NORMALIZATION, BUSINESS_SKILL_NORMALIZATION
+from app.helpers.resume_helpers import normalize_text, match_variants
 
 def extract_skills_from_jd_text(jd_text: str) -> List[str]:
-    found_skills = set()
-    for skill in it_skills + business_skills:
-        if skill.lower() in jd_text.lower():
-            found_skills.add(skill)
+    jd_text = normalize_text(jd_text)
+    all_skills = {**IT_SKILL_NORMALIZATION, **BUSINESS_SKILL_NORMALIZATION}
+    
+    found_skills = {
+        canonical for canonical, variants in all_skills.items()
+        if match_variants(jd_text, variants)
+    }
+    
     return list(found_skills)
