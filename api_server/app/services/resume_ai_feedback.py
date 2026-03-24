@@ -5,7 +5,7 @@ import asyncio
 from ollama import AsyncClient
 from app.config import AI_MODEL_NAME, OLLAMA_HOST
 
-async def resume_feedback_free_tier(list_skills, missing_skills, matching_score, jd_text, resume_text):
+async def resume_feedback_free_tier(resume_text, list_skills, jd_text = None, missing_skills = None, matching_score = 0):
     # list_skills is the list of skills including both hard and soft skills extracted from the resume
     # missing_skills is the list of skills that were not found in the resume
     # matching_score is the percentage of skills found in the resume
@@ -16,7 +16,7 @@ async def resume_feedback_free_tier(list_skills, missing_skills, matching_score,
         prompt = f"""
             You are an AI resume reviewer.
 
-            Analyze the resume and provide general feedback.
+            Analyze the resume and provide general feedback for free tier users.
 
             Resume:
             {resume_text}
@@ -45,7 +45,7 @@ async def resume_feedback_free_tier(list_skills, missing_skills, matching_score,
         prompt = f"""
             You are an AI resume reviewer.
 
-            Analyze the resume and provide general feedback.
+            Analyze the resume and provide general feedback for free tier users.
 
             Resume:
             {resume_text}
