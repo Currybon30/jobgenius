@@ -87,25 +87,24 @@ def extract_skills_from_text_with_jd(text: str, jd_text: str):
 ############################ Advanced features using AI #########################################
 # Apply AI for smarter keyword extraction from PDF, semantic similarity, resume feedback.
 import re
-from ollama import Client
+from ollama import chat
+from ollama import ChatResponse
 
 # Use AI to extract skills more accurately from the resume text
 def extract_skills_with_ai(text: str):
     # Use llm to analyze the resume text and extract skills
-    client = Client(host='http://localhost:11434')
-    
-    response = client.chat(model='qwen2.5:7b', messages=[
+    response: ChatResponse = chat(model='qwen2.5:7b', messages=[
         {
             'role': 'system',
             'content': 'You are a helpful assistant that extracts skills from resumes. Extract both hard and soft skills mentioned in the resume text.'
         },
         {
             'role': 'user',
-            'content': f'Extract skills from the following resume text:\n\n{text}'
+            'content': f'Extract skills from the following resume text:\n\n{text} with the following format:\n'
         }
     ])
     
-    return response
+    return response.message.content
     
 
 
