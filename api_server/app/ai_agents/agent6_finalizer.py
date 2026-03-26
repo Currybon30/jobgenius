@@ -1,11 +1,10 @@
 import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-import asyncio
 from ollama import AsyncClient
 from app.config import AI_MODEL_NAME, OLLAMA_HOST
 
-async def resume_feedback_free_tier(resume_text, list_skills, jd_text = None, missing_skills = None, matching_score = 0):
+async def resume_feedback_free_tier(resume_text, list_skills, jd_text = None, missing_skills = None, matching_score = 0, missing_skills_score = 0, metrics_score = 0, necessary_sections_score = 0):
     # list_skills is the list of skills including both hard and soft skills extracted from the resume
     # missing_skills is the list of skills that were not found in the resume
     # matching_score is the percentage of skills found in the resume
@@ -56,7 +55,10 @@ async def resume_feedback_free_tier(resume_text, list_skills, jd_text = None, mi
             Missing Skills:
             {missing_skills}
             
-            Matching Score: {matching_score}%
+            Matching Score: {matching_score}% 
+            + Missing Skills Score: {missing_skills_score}%
+            + Metrics Score: {metrics_score}%
+            + Necessary Sections Score: {necessary_sections_score}%
 
             Instructions:
             - Provide general feedback only (no deep or highly personalized analysis)
@@ -64,7 +66,7 @@ async def resume_feedback_free_tier(resume_text, list_skills, jd_text = None, mi
             - Focus on:
             1. Overall resume quality
             2. Skills section (clarity and completeness)
-            3. Experience section (impact, clarity)
+            3. Experience section (impact, clarity) if no experience section is found, check for the presence of projects or other relevant sections that can demonstrate experience
             4. Structure and readability
             - Keep suggestions simple and useful
 

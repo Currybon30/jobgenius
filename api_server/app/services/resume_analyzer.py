@@ -6,10 +6,9 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 import pymupdf
 from internal_db.skills import SOFT_SKILL_NORMALIZATION, IT_SKILL_NORMALIZATION, BUSINESS_SKILL_NORMALIZATION
 from jd import extract_skills_from_jd_text
-from app.config import AI_MODEL_NAME, OLLAMA_HOST
 from app.helpers.resume_helpers import normalize_text, match_variants
 import re
-
+from datetime import datetime
 
 def extract_text_from_resume(file_path: str):
     try:
@@ -36,6 +35,7 @@ def extract_contact_info(text: str):
     
     emails = re.findall(email_pattern, text)
     phones = re.findall(phone_pattern, text)
+
     
     return {
         "emails": emails,
@@ -54,7 +54,7 @@ def extract_soft_skills_from_text(text: str):
 def extract_skills_from_text_without_jd(text: str, field: str):
     text = normalize_text(text)
     found_soft_skills = extract_soft_skills_from_text(text)
-    if field == 'it':
+    if field == 'it' or field == 'technology' or field == 'software' or field == 'tech':
         skills_to_check = IT_SKILL_NORMALIZATION
     elif field == 'business':
         skills_to_check = BUSINESS_SKILL_NORMALIZATION
@@ -82,23 +82,155 @@ def extract_skills_from_text_with_jd(text: str, jd_text: str):
         if match_variants(text, variants) and canonical in jd_skills
     }
     missing_skills = set(jd_skills) - found_skills
-    matching_score = len(found_skills) / len(jd_skills) * 100 if jd_skills else 0
+    matching_skills_score = len(found_skills) / len(jd_skills) if jd_skills else 0.1
     return {
         "skills": list(found_skills),
         "missing_skills": list(missing_skills)[:5],  # Limit to top 5 missing skills for free users
-        "matching_score": round(matching_score, 2),
+        "matching_skills_score": matching_skills_score,
         "soft_skills": list(found_soft_skills)
     }
+    
 
-############################ Advanced features using AI #########################################
-# Apply AI for smarter keyword extraction from PDF, semantic similarity, resume feedback.
-# Use AI agentic approach
+def extract_section_content(text: str):
+    text = re.sub(r'\r\n', '\n', text)
+    section_patterns = {
+        "summary": r'^\s*(summary|objective|profile|professional summary|professional objective|career objective)\b',
+        "skills": r'^\s*(skills|technical skills)\b',
+        "education": r'^\s*(education|academic background)\b',
+        "experience": r'^\s*(experience|work experience|employment history|professional experience)\b',
+        "projects": r'^\s*(projects|project experience)\b',
+        "certifications": r'^\s*(certifications|certification|courses|training|qualifications|credentials|licenses)\b',
+        "languages": r'^\s*(languages|language skills)\b',
+    }
+
+    matches = []
+    for section, pattern in section_patterns.items():
+        for match in re.finditer(pattern, text, re.IGNORECASE | re.MULTILINE): 
+            matches.append((section, match.start()))
+
+    matches.sort(key=lambda x: x[1])
+
+    extracted = {}
+    for i in range(len(matches)):
+        section, start = matches[i]
+        end = matches[i + 1][1] if i + 1 < len(matches) else len(text)
+
+        content = text[start:end].strip()
+
+        # keep longest match if duplicate section appears
+        if section not in extracted or len(content) > len(extracted[section]):
+            extracted[section] = content
+
+    return extracted
+
+def has_summary(text: str):
+    summary_pattern = r'^\s*(summary|objective|profile|professional summary|career objective|professional objective)\b'
+    return re.search(summary_pattern, text, re.IGNORECASE | re.MULTILINE) is not None
+
+def estimate_experience_years(text: str):
+    total_years = 0
+    current_year = datetime.now().year
+
+    # Match: 2020 - 2023 OR 2021 - Present
+    date_ranges = re.findall(r'(20\d{2})\s*[-–—]\s*(20\d{2}|present)', text, re.IGNORECASE)
+
+    for start, end in date_ranges:
+        start = int(start)
+        end = current_year if end.lower() == "present" else int(end)
+
+        if end >= start:
+            total_years += (end - start)
+
+    # Fallback: "3+ years"
+    explicit = re.search(r'(\d+)\+?\s+years', text, re.IGNORECASE)
+    if explicit:
+        total_years = max(total_years, int(explicit.group(1)))
+
+    return total_years
+
+
+def estimate_experience_years_from_sections(sections: dict):
+    text = ""
+
+    # ✅ prioritize real experience
+    if "experience" in sections:
+        text += sections["experience"]
+
+    # ⚠️ fallback for juniors
+    elif "projects" in sections:
+        text += sections["projects"]
+
+    return estimate_experience_years(text)
 
     
+    
+def calculate_resume_quality_score_for_free_tier(text: str, jd_provided: bool):
+    score = 0
+    sections = extract_section_content(text)
+    years_exp = estimate_experience_years_from_sections(sections)
+    
+    # -------------------------
+    # 1. Sections (0.2)
+    # -------------------------
+    section_score = 0
+    if "skills" in sections:
+        section_score += 0.5
+    if "education" in sections:
+        section_score += 0.5
+
+    score += 0.2 * section_score
+    
+    # -------------------------
+    # 2. Experience presence (0.1)
+    # -------------------------
+    if "experience" in sections:
+        score += 0.1
+    elif "projects" in sections:
+        score += 0.07
+        
+    # -------------------------
+    # 3. Summary (0.05)
+    # -------------------------
+    if years_exp >= 3:
+        score += 0.05 if has_summary(text) else 0
+    else:
+        score += 0.05 if has_summary(text) else 0.03
+
+    # -------------------------
+    # 4. Basic metrics (0.05)
+    # -------------------------
+    exp_text = sections.get("experience", "") or sections.get("projects", "")
+    bullets = [b.strip() for b in re.split(r'[\n•\-]', exp_text) if b.strip()]
+
+    if bullets:
+        metric_count = sum(
+            bool(re.search(r'\d+%|\$\d+|\d+\s*(users|clients|x|times)', b, re.I))
+            for b in bullets
+        )
+        ratio = metric_count / len(bullets)
+
+        if ratio >= 0.5:
+            score += 0.05
+        elif ratio >= 0.3:
+            score += 0.03
+        elif ratio > 0:
+            score += 0.01
+            
+    if jd_provided:
+        # -------------------------
+        # 5. Skills match (0.7)
+        # -------------------------
+        skills_info = extract_skills_from_text_with_jd(text, "")
+        score = 0.3 * score + 0.7 * skills_info["matching_skills_score"]
+
+    return round(score, 3) * 100 # Convert to percentage
+
+############################ Advanced features using AI #########################################
+
     
 
 ############################ TESTING #########################################
-from resume_ai_feedback import resume_feedback_free_tier
+from api_server.app.ai_agents.agent6_finalizer import resume_feedback_free_tier
 import asyncio
 if __name__ == "__main__":
     pdf_path = r"D:\IT\My Projects\job_recommender_system\api_server\external_resources\Tuong Nguyen Pham Resume.pdf"
