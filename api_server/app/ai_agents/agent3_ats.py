@@ -15,7 +15,7 @@ def has_metrics(text:str):
     projects_metrics = sum(bool(re.search(metrics_pattern, bullet)) for bullet in projects_bullets)
     total_bullets = len(experience_bullets) + len(projects_bullets)
     if total_bullets == 0:
-        return False
+        return 0.0
     metrics_ratio = (experience_metrics + projects_metrics) / total_bullets
     if metrics_ratio >= 0.7:
         return 1.0
@@ -25,7 +25,7 @@ def has_metrics(text:str):
         return 0.4
     else:
         return 0.1
-    
+
 
 def has_certifications(text:str):
     # Check for presence of certifications section or keywords like "certified", "certification", "course", "training"

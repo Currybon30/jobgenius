@@ -22,6 +22,12 @@ async def resume_feedback_free_tier(resume_text, list_skills, jd_text = None, mi
 
             Detected Skills:
             {list_skills}
+            
+            Since no job description was provided, we cannot analyze missing skills or provide a matching score.
+            Only metrics score and necessary sections score will be considered for feedback.
+            
+            - Metrics Score: {metrics_score}%
+            - Necessary Sections Score: {necessary_sections_score}%
 
             Instructions:
             - Provide general feedback only (no deep or highly personalized analysis)
