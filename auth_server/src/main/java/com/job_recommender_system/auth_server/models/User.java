@@ -22,6 +22,9 @@ public class User {
     @Column(nullable = false)
     private String role = "USER";
 
+    @Column(nullable = false)
+    private String tier = "FREE";
+
     public User() {}
     public User (String name, String email, String password) {
         this.name = name;
@@ -68,6 +71,14 @@ public class User {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public String getTier() {
+        return tier;
+    }
+
+    public void setTier(String tier) {
+        this.tier = tier;
     }
 
 }

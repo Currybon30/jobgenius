@@ -48,10 +48,10 @@ public class AuthService {
                 throw new RuntimeException("Invalid password");
             }
             // Generate access token
-            String accessToken = jwtService.generateAccessToken(user.getEmail());
+            String accessToken = jwtService.generateAccessToken(user);
             // Generate refresh token
             RefreshToken refreshToken = new RefreshToken();
-            refreshToken.setRefreshToken(jwtService.generateRefreshToken(user.getEmail()));
+            refreshToken.setRefreshToken(jwtService.generateRefreshToken(user));
             refreshToken.setUid(user.getUid());
             refreshToken.setRevoked(false);
             refreshToken.setCreatedAt(new java.util.Date());
