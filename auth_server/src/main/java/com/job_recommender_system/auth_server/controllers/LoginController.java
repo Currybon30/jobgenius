@@ -2,6 +2,7 @@ package com.job_recommender_system.auth_server.controllers;
 
 import com.job_recommender_system.auth_server.dto.LoginRequest;
 import com.job_recommender_system.auth_server.services.AuthService;
+import com.job_recommender_system.auth_server.services.JwtService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,17 +13,20 @@ import java.util.Map;
 @RequestMapping("/auth")
 public class LoginController {
     private final AuthService authService;
-    public LoginController(AuthService authService) {
+    private final JwtService jwtService;
+    public LoginController(AuthService authService, JwtService jwtService) {
+
         this.authService = authService;
+        this.jwtService = jwtService;
     }
     
     @PostMapping("/login")
-    public ResponseEntity<Map> login(@RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<String> login(@RequestBody LoginRequest loginRequest) {
         try {
-            Map<String, String> tokens = authService.login(loginRequest);
-            return ResponseEntity.ok(tokens);
+            String token = authService.login(loginRequest);
+            return ResponseEntity.ok(token);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
 
@@ -37,12 +41,26 @@ public class LoginController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<String> refreshToken(@RequestHeader("Authorization") String refreshToken) {
+    public ResponseEntity<?> refreshToken(@RequestHeader("Authorization") String refreshToken) {
         try {
-            String newToken = authService.refreshAccessToken(refreshToken);
+            String newToken = jwtService.refreshAccessToken(refreshToken);
             return ResponseEntity.ok(newToken);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            String message = e.getMessage();
+
+            if (message.equals("Session expired. Please log in again.")) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "SESSION_EXPIRED"));
+            }
+
+            if (message.equals("Refresh token is revoked or expired.")) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "REFRESH_TOKEN_EXPIRED"));
+            }
+
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "INVALID_TOKEN"));
+        }
         }
     }
 }

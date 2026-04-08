@@ -1,6 +1,7 @@
 package com.job_recommender_system.auth_server.services;
 
-import com.job_recommender_system.auth_server.repositories.BlacklistedTokenRepository;
+import com.job_recommender_system.auth_server.models.RefreshToken;
+import com.job_recommender_system.auth_server.repositories.RefreshTokenRepository;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
@@ -16,7 +17,10 @@ public class JwtService {
     @Value("${jwt.secret}")
     private final String SECRET_KEY = System.getenv("JWT_SECRET_KEY");
 
-    public JwtService() {
+    private final RefreshTokenRepository refreshTokenRepository;
+
+    public JwtService(RefreshTokenRepository refreshTokenRepository) {
+        this.refreshTokenRepository = refreshTokenRepository;
         if (SECRET_KEY == null || SECRET_KEY.isEmpty()) {
             throw new IllegalStateException("JWT_SECRET_KEY environment variable is not set");
         }
@@ -66,14 +70,30 @@ public class JwtService {
     }
 
     public String refreshAccessToken(String refreshToken) {
-        if (validateToken(refreshToken)) {
-            String username = extractUsername(refreshToken);
-            return generateAccessToken(username);
-        }
-        throw new RuntimeException("Invalid refresh token");
-    }
+        refreshToken = refreshToken.replace("Bearer ", ""); // Remove "Bearer " prefix if present
+        RefreshToken token = refreshTokenRepository.findByRefreshToken(refreshToken)
+                .orElseThrow(() -> new RuntimeException("Invalid refresh token"));
 
-    public boolean isTokenBlacklisted(String token, BlacklistedTokenRepository blacklistedTokenRepo) {
-        return blacklistedTokenRepo.existsByBltoken(token);
+        if (token.isRevoked() || token.getExpiryDate().before(new Date())) {
+            throw new RuntimeException("Refresh token is revoked or expired.");
+        }
+
+        if(!validateToken(refreshToken)) {
+            throw new RuntimeException("Invalid refresh token");
+        }
+
+        String username = extractUsername(refreshToken);
+        token.setRevoked(true);
+        long MAX_SESSION_TIME = 30L * 24 * 60 * 60 * 1000; // 30 days
+
+        if (System.currentTimeMillis() - token.getCreatedAt().getTime() > MAX_SESSION_TIME) {
+            throw new RuntimeException("Session expired. Please log in again.");
+        }
+
+        // else generate new access token and refresh token
+
+
+        refreshTokenRepository.save(token);
+        return generateAccessToken(username);
     }
 }
