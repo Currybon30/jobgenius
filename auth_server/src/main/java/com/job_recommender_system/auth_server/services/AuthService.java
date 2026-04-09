@@ -9,6 +9,8 @@ import com.job_recommender_system.auth_server.repositories.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Date;
+
 @Service
 public class AuthService {
 
@@ -54,8 +56,8 @@ public class AuthService {
             refreshToken.setRefreshToken(jwtService.generateRefreshToken(user));
             refreshToken.setUid(user.getUid());
             refreshToken.setRevoked(false);
-            refreshToken.setCreatedAt(new java.util.Date());
-            refreshToken.setExpiryDate(new java.util.Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 7)); // 7 days
+            refreshToken.setCreatedAt(new Date());
+            refreshToken.setExpiryDate(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 7)); // 7 days
             return accessToken;
         } catch (Exception e) {
             throw new RuntimeException("Error logging in user: " + e.getMessage());

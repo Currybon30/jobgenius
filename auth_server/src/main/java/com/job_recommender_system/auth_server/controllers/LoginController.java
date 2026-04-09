@@ -18,7 +18,6 @@ public class LoginController {
     private final JwtService jwtService;
     private final UserRepository userRepository;
     public LoginController(AuthService authService, JwtService jwtService, UserRepository userRepository) {
-
         this.authService = authService;
         this.jwtService = jwtService;
         this.userRepository = userRepository;
