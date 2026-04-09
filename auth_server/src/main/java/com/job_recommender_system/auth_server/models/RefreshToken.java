@@ -26,13 +26,18 @@ public class RefreshToken {
     @Column(nullable = false)
     private Date expiryDate;
 
+    @Column(nullable = false)
+    private Date sessionStartAt;
+
 
     public RefreshToken() {}
-    public RefreshToken(String refreshToken, Long uid, boolean revoked, Date expiryDate) {
+    public RefreshToken(String refreshToken, Long uid, boolean revoked, Date expiryDate, Date createdAt, Date sessionStartAt) {
         this.refreshToken = refreshToken;
         this.uid = uid;
         this.revoked = revoked;
         this.expiryDate = expiryDate;
+        this.createdAt = createdAt;
+        this.sessionStartAt = sessionStartAt;
     }
 
     public Long getId() {
@@ -79,6 +84,14 @@ public class RefreshToken {
 
     public void setExpiryDate(Date expiryDate) {
         this.expiryDate = expiryDate;
+    }
+
+    public Date getSessionStartAt() {
+        return sessionStartAt;
+    }
+
+    public void setSessionStartAt(Date sessionStartAt) {
+        this.sessionStartAt = sessionStartAt;
     }
 
 }

@@ -50,6 +50,11 @@ public class SecurityConfig {
                 .requestMatchers("/auth/**").permitAll()
                 .anyRequest().authenticated()
             )
+            .oauth2Login(oauth2 -> oauth2
+                .loginPage("/auth/oauth2/login") // Custom login page for OAuth2
+                .defaultSuccessUrl("/auth/oauth2/success", true) // Redirect after successful OAuth2 login. True means always redirect to this URL after login, regardless of the original request.
+                .failureUrl("/auth/oauth2/failure") // Redirect after failed OAuth2 login
+            )
             .addFilterBefore(rateLimitingFilter, JwtAuthFilter.class) // Add rate limiting filter before JWT authentication filter
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

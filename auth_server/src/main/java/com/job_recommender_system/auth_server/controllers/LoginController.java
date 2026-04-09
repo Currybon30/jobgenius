@@ -67,4 +67,20 @@ public class LoginController {
                     .body(Map.of("error", "INVALID_TOKEN"));
         }
     }
+
+    @GetMapping("/oauth2/login")
+    public ResponseEntity<String> oauth2Login() {
+        // This endpoint will be handled by Spring Security's OAuth2 login mechanism
+        return ResponseEntity.ok("Redirecting to OAuth2 provider...");
+    }
+
+    @GetMapping("/oauth2/success")
+    public ResponseEntity<String> oauth2LoginSuccess() {
+        return ResponseEntity.ok("OAuth2 login successful!");
+    }
+
+    @GetMapping("/oauth2/failure")
+    public ResponseEntity<String> oauth2LoginFailure() {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("OAuth2 login failed.");
+    }
 }

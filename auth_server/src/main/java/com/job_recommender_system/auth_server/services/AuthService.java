@@ -58,6 +58,8 @@ public class AuthService {
             refreshToken.setRevoked(false);
             refreshToken.setCreatedAt(new Date());
             refreshToken.setExpiryDate(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 7)); // 7 days
+            refreshToken.setSessionStartAt(new Date());
+            refreshTokenRepository.save(refreshToken);
             return accessToken;
         } catch (Exception e) {
             throw new RuntimeException("Error logging in user: " + e.getMessage());

@@ -27,7 +27,13 @@ public class RateLimitingFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain)
             throws IOException, ServletException {
-        String ip = request.getRemoteAddr();
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isEmpty()) {
+            ip = request.getRemoteAddr();
+        } else {
+            // X-Forwarded-For can contain multiple IPs; the first one is the client
+            ip = ip.split(",")[0].trim();
+        }
         var bucket = proxyManager.builder().build(ip, bucketConfigurationSupplier); // Get or create bucket for the client's IP address
 
         if (bucket.tryConsume(1)) { // Consume 1 token for the request
