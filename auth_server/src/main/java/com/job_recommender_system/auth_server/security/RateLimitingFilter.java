@@ -41,6 +41,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         } else {
             response.setStatus(429); // Too Many Requests
             response.setHeader("Retry-After", "120"); // Suggest client to retry after 120 seconds
+            response.getWriter().write("Too many requests. Please try again later.");
         }
     }
 }

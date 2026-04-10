@@ -2,6 +2,7 @@ package com.job_recommender_system.auth_server.config;
 
 import com.job_recommender_system.auth_server.security.JwtAuthFilter;
 import com.job_recommender_system.auth_server.security.RateLimitingFilter;
+import com.job_recommender_system.auth_server.services.UserService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,6 +10,10 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
+import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -19,9 +24,11 @@ public class SecurityConfig {
     private final JwtAuthFilter jwtAuthFilter;
     private final RateLimitingFilter rateLimitingFilter;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter, RateLimitingFilter rateLimitingFilter) {
+    private final UserService userService;
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter, RateLimitingFilter rateLimitingFilter, UserService userService) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.rateLimitingFilter = rateLimitingFilter;
+        this.userService = userService;
     }
 
     @Bean
@@ -51,13 +58,15 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth2 -> oauth2
-                .loginPage("/auth/oauth2/login") // Custom login page for OAuth2
-                .defaultSuccessUrl("/auth/oauth2/success", true) // Redirect after successful OAuth2 login. True means always redirect to this URL after login, regardless of the original request.
+                    .userInfoEndpoint(userInfo ->
+                            userInfo.oidcUserService(oidcUserService())
+                    )
+                .defaultSuccessUrl("/auth/oauth2/success", true) // Redirect after successful OAuth2 login.
                 .failureUrl("/auth/oauth2/failure") // Redirect after failed OAuth2 login
             )
-            .addFilterBefore(rateLimitingFilter, JwtAuthFilter.class) // Add rate limiting filter before JWT authentication filter
+            .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class) // Add rate limiting filter before JWT authentication filter
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((req, res, e) ->
                     res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"))
@@ -75,5 +84,21 @@ public class SecurityConfig {
 
             .cors(cors -> cors.configurationSource(corsConfigurationSource())); // Enable CORS with the defined configuration
         return http.build();
+    }
+
+
+    // ---------------- OAuth 2.0 Login Configuration ----------------
+    @Bean
+    public OAuth2UserService<OidcUserRequest, OidcUser> oidcUserService() {
+
+        OidcUserService delegate = new OidcUserService();
+
+        return userRequest -> {
+            OidcUser oidcUser = delegate.loadUser(userRequest);
+
+            userService.saveOrUpdateOAuthUser(oidcUser);
+
+            return oidcUser;
+        };
     }
 }

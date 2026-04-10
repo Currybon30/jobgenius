@@ -25,6 +25,9 @@ public class User {
     @Column(nullable = false)
     private String tier = "FREE";
 
+    @Column(nullable = false)
+    private String provider = "LOCAL";
+
     public User() {}
     public User (String name, String email, String password) {
         this.name = name;
@@ -81,4 +84,11 @@ public class User {
         this.tier = tier;
     }
 
+    public String getProvider() {
+        return provider;
+    }
+
+    public void setProvider(String provider) {
+        this.provider = provider;
+    }
 }
