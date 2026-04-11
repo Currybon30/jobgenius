@@ -6,21 +6,18 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.function.Supplier;
 
+@RequiredArgsConstructor
 @Component
 public class RateLimitingFilter extends OncePerRequestFilter {
     private final ProxyManager<String> proxyManager;
     private final Supplier<BucketConfiguration> bucketConfigurationSupplier;
-
-    public RateLimitingFilter(ProxyManager<String> proxyManager, Supplier<BucketConfiguration> bucketConfigurationSupplier) {
-        this.proxyManager = proxyManager;
-        this.bucketConfigurationSupplier = bucketConfigurationSupplier;
-    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,

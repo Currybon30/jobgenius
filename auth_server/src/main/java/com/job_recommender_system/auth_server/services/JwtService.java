@@ -1,5 +1,6 @@
 package com.job_recommender_system.auth_server.services;
 
+import com.job_recommender_system.auth_server.dto.AuthResponse;
 import com.job_recommender_system.auth_server.models.RefreshToken;
 import com.job_recommender_system.auth_server.models.User;
 import com.job_recommender_system.auth_server.repositories.RefreshTokenRepository;
@@ -7,7 +8,10 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.security.Key;
@@ -19,7 +23,7 @@ public class JwtService {
     private final String SECRET_KEY = System.getenv("JWT_SECRET_KEY");
 
     private final RefreshTokenRepository refreshTokenRepository;
-
+    private static final Logger log = org.slf4j.LoggerFactory.getLogger(JwtService.class);
 
     public JwtService(RefreshTokenRepository refreshTokenRepository) {
         this.refreshTokenRepository = refreshTokenRepository;
@@ -70,6 +74,15 @@ public class JwtService {
                 .get("tier", String.class);
     }
 
+    public Date extractExpiration(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(getKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getExpiration();
+    }
+
     public boolean validateToken(String token) {
         try {
             Jwts.parserBuilder()
@@ -91,7 +104,7 @@ public class JwtService {
                 .compact();
     }
 
-    public String refreshAccessToken(String refreshToken, User user) {
+    public AuthResponse refreshAccessToken(String refreshToken, User user) {
         refreshToken = refreshToken.replace("Bearer ", ""); // Remove "Bearer " prefix if present
         RefreshToken token = refreshTokenRepository.findByRefreshToken(refreshToken)
                 .orElseThrow(() -> new RuntimeException("Invalid refresh token"));
@@ -112,9 +125,11 @@ public class JwtService {
             throw new RuntimeException("Session expired. Please log in again.");
         }
 
+        String newAccessToken = generateAccessToken(user);
+        String newRefreshTokenStr = generateRefreshToken(user);
         // else generate new refresh token
         RefreshToken newToken = new RefreshToken();
-        newToken.setRefreshToken(generateRefreshToken(user));
+        newToken.setRefreshToken(newRefreshTokenStr);
         newToken.setUid(user.getUid());
         newToken.setRevoked(false);
         newToken.setCreatedAt(new Date());
@@ -122,6 +137,18 @@ public class JwtService {
         newToken.setSessionStartAt(token.getSessionStartAt()); // Keep the original session start time
         refreshTokenRepository.save(newToken);
 
-        return generateAccessToken(user);
+        return AuthResponse.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshTokenStr)
+                .errorMessage("")
+                .build();
+    }
+
+    @Transactional
+    @Scheduled(fixedRate = 60 * 60 * 1000) // Run every hour
+    public void cleanUpExpiredTokens() {
+        Date now = new Date();
+        int deleted = refreshTokenRepository.deleteByExpiryDateBeforeAndRevoked(now, true);
+        log.info("Cleaned up {} expired and revoked refresh tokens at {}", deleted, now);
     }
 }

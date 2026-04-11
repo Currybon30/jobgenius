@@ -1,13 +1,16 @@
 package com.job_recommender_system.auth_server.models;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 
 import java.util.Date;
 
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name = "refresh_tokens")
 public class RefreshToken {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -29,16 +32,6 @@ public class RefreshToken {
     @Column(nullable = false)
     private Date sessionStartAt;
 
-
-    public RefreshToken() {}
-    public RefreshToken(String refreshToken, Long uid, boolean revoked, Date expiryDate, Date createdAt, Date sessionStartAt) {
-        this.refreshToken = refreshToken;
-        this.uid = uid;
-        this.revoked = revoked;
-        this.expiryDate = expiryDate;
-        this.createdAt = createdAt;
-        this.sessionStartAt = sessionStartAt;
-    }
 
     public Long getId() {
         return id;

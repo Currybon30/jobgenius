@@ -1,5 +1,6 @@
 package com.job_recommender_system.auth_server.controllers;
 
+import com.job_recommender_system.auth_server.dto.AuthResponse;
 import com.job_recommender_system.auth_server.dto.LoginRequest;
 import com.job_recommender_system.auth_server.models.RefreshToken;
 import com.job_recommender_system.auth_server.models.User;
@@ -7,7 +8,7 @@ import com.job_recommender_system.auth_server.repositories.RefreshTokenRepositor
 import com.job_recommender_system.auth_server.repositories.UserRepository;
 import com.job_recommender_system.auth_server.services.AuthService;
 import com.job_recommender_system.auth_server.services.JwtService;
-import com.job_recommender_system.auth_server.services.UserService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -17,56 +18,34 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Date;
 import java.util.Map;
 
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/auth")
 public class LoginController {
     private final AuthService authService;
     private final JwtService jwtService;
-    private final UserService userService;
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
-    public LoginController(AuthService authService, JwtService jwtService,
-                           UserRepository userRepository, UserService userService,
-                           RefreshTokenRepository refreshTokenRepository) {
-        this.authService = authService;
-        this.jwtService = jwtService;
-        this.userRepository = userRepository;
-        this.userService = userService;
-        this.refreshTokenRepository = refreshTokenRepository;
-    }
     
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest loginRequest) {
         try {
-            String token = authService.login(loginRequest);
-            return ResponseEntity.ok(token);
+            return ResponseEntity.ok(authService.login(loginRequest));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    AuthResponse.builder()
+                            .accessToken(null)
+                            .refreshToken(null)
+                            .errorMessage(e.getMessage())
+                            .build()
+            );
         }
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<String> logout(@RequestHeader("Authorization") String token) {
+    public ResponseEntity<String> logout(@RequestHeader("Authorization") String accessToken, @RequestBody Map<String, String> refreshTokenRequest) {
         try {
-            /*
-            * - Store the access token in database to avoid reusing the same access token for logout multiple times
-            * - Delete these tokens from database after the expiry time of the access token is reached to avoid memory leak
-            * - Do this the same for refresh token as well, store the refresh token in database and delete it after the expiry time is reached or when the user logs out
-            * */
-
-
-            token = token.replace("Bearer ", "");
-            String userEmail = jwtService.extractUsername(token);
-            User user = userRepository.findByEmail(userEmail)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-            Long uid = user.getUid();
-            // Get the refresh token from the database associated with the user and revoke is 0
-            String refreshToken = refreshTokenRepository.findByUidAndRevoked(uid, false)
-                    .orElseThrow(() -> new RuntimeException("Refresh token not found or already revoked")).getRefreshToken();
-
-            System.out.println(refreshToken);
-
-            authService.logout(refreshToken);
+            authService.logout(accessToken, refreshTokenRequest.get("refresh_token"));
             return ResponseEntity.ok("Logged out successfully");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
@@ -78,8 +57,7 @@ public class LoginController {
         try {
             User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-            String newToken = jwtService.refreshAccessToken(refreshToken, user);
-            return ResponseEntity.ok(newToken);
+            return ResponseEntity.ok(jwtService.refreshAccessToken(refreshToken, user));
         } catch (Exception e) {
             String message = e.getMessage();
 
@@ -99,9 +77,13 @@ public class LoginController {
     }
 
     @GetMapping("/oauth2/success")
-    public ResponseEntity<String> success(Authentication authentication) {
+    public ResponseEntity<AuthResponse> success(Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof OidcUser oidcUser)) {
-            return ResponseEntity.status(401).body("No authentication found");
+            return ResponseEntity.status(401).body(AuthResponse.builder()
+                    .accessToken(null)
+                    .refreshToken(null)
+                    .errorMessage("Authentication failed")
+                    .build());
         }
 
         String email = oidcUser.getEmail();
@@ -121,7 +103,11 @@ public class LoginController {
         refreshToken.setExpiryDate(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 7)); // 7 days
         refreshToken.setSessionStartAt(new Date());
         refreshTokenRepository.save(refreshToken);
-        return ResponseEntity.ok(accessToken);
+        return ResponseEntity.ok(AuthResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken.getRefreshToken())
+                .errorMessage(null)
+                .build());
     }
 
     @GetMapping("/oauth2/failure")

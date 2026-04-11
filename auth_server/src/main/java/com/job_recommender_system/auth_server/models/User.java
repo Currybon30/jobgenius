@@ -1,7 +1,11 @@
 package com.job_recommender_system.auth_server.models;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name = "users")
 public class User {
@@ -28,12 +32,6 @@ public class User {
     @Column(nullable = false)
     private String provider = "LOCAL";
 
-    public User() {}
-    public User (String name, String email, String password) {
-        this.name = name;
-        this.email = email;
-        this.password = password;
-    }
 
     // Getters and Setters
     public Long getUid() {

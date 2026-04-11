@@ -4,6 +4,7 @@ import com.job_recommender_system.auth_server.security.JwtAuthFilter;
 import com.job_recommender_system.auth_server.security.RateLimitingFilter;
 import com.job_recommender_system.auth_server.services.UserService;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -18,18 +19,13 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
 
+@RequiredArgsConstructor
 @Configuration
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
     private final RateLimitingFilter rateLimitingFilter;
-
     private final UserService userService;
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter, RateLimitingFilter rateLimitingFilter, UserService userService) {
-        this.jwtAuthFilter = jwtAuthFilter;
-        this.rateLimitingFilter = rateLimitingFilter;
-        this.userService = userService;
-    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {

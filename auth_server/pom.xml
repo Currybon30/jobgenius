@@ -30,6 +30,14 @@
 			<optional>true</optional>
 		</dependency>
 
+		<!-- Lombok (for reducing boilerplate code) -->
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<version>1.18.32</version> <!-- or latest -->
+			<scope>provided</scope>
+		</dependency>
+
 		<!-- Web (REST API) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

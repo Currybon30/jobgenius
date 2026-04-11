@@ -3,16 +3,14 @@ package com.job_recommender_system.auth_server.services;
 import com.job_recommender_system.auth_server.models.User;
 import com.job_recommender_system.auth_server.repositories.UserRepository;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
 
+@RequiredArgsConstructor
 @Service
 public class UserService {
     private final UserRepository userRepository;
-
-    public UserService(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
 
     @Transactional
     public void saveOrUpdateOAuthUser(OidcUser oidcUser) {
