@@ -40,7 +40,7 @@ public class JwtService {
         return Jwts.builder()
                 .setSubject(user.getEmail())
                 .claim("role", user.getRole()) // Include role in the payload
-                .claim("tier", user.getTier()) // Include tier in the payload
+                .claim("user_id", user.getUid()) // Include uid in the payload
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 15)) // 15 minutes
                 .signWith(getKey(), SignatureAlgorithm.HS256)
@@ -65,13 +65,13 @@ public class JwtService {
                 .get("role", String.class);
     }
 
-    public String extractUserTier(String token) {
+    public String extractUserId(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getKey())
                 .build()
                 .parseClaimsJws(token)
                 .getBody()
-                .get("tier", String.class);
+                .get("user_id", String.class);
     }
 
     public Date extractExpiration(String token) {
@@ -130,7 +130,7 @@ public class JwtService {
         // else generate new refresh token
         RefreshToken newToken = new RefreshToken();
         newToken.setRefreshToken(newRefreshTokenStr);
-        newToken.setUid(user.getUid());
+        newToken.setUser(user);
         newToken.setRevoked(false);
         newToken.setCreatedAt(new Date());
         newToken.setExpiryDate(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 7)); // 7 days

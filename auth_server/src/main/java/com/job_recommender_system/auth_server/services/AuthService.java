@@ -1,6 +1,7 @@
 package com.job_recommender_system.auth_server.services;
 
 import com.job_recommender_system.auth_server.dto.AuthResponse;
+import com.job_recommender_system.auth_server.dto.FastAPICreateRequest;
 import com.job_recommender_system.auth_server.dto.LoginRequest;
 import com.job_recommender_system.auth_server.dto.RegisterRequest;
 import com.job_recommender_system.auth_server.models.RefreshToken;
@@ -8,20 +9,29 @@ import com.job_recommender_system.auth_server.models.User;
 import com.job_recommender_system.auth_server.repositories.RefreshTokenRepository;
 import com.job_recommender_system.auth_server.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.Date;
+import java.util.List;
 
 @RequiredArgsConstructor
 @Service
 public class AuthService {
 
+    @Value("${API_KEY}")
+    private String apiKey;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final RedisService redisService;
+    private final WebClient webClient;
+    private final Logger logger = LoggerFactory.getLogger(AuthService.class);
 
     public void register(RegisterRequest registerRequest) {
         try {
@@ -33,20 +43,30 @@ public class AuthService {
                     user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
                     user.setProvider("BOTH");
                 }
-                userRepository.save(user);
             }
 
             else {
-                User newUser = new User();
-                newUser.setName(registerRequest.getName());
-                newUser.setEmail(registerRequest.getEmail());
-                newUser.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
-                // save user to database
-                userRepository.save(newUser);
+                user = new User();
+                user.setName(registerRequest.getName());
+                user.setEmail(registerRequest.getEmail());
+                user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
+            }
+            user = userRepository.save(user);
+
+            if(!user.isFastAPISync()) {
+                webClient.post()
+                        .uri("/internal/users/add")
+                        .bodyValue(new FastAPICreateRequest(user.getUid()))
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+
+                user.setFastAPISync(true);
+                userRepository.save(user);
             }
         }
         catch (Exception e) {
-            throw new RuntimeException("Error registering user: " + e.getMessage());
+            logger.error("Error registering user: " + e.getMessage());
         }
     }
 
@@ -62,17 +82,26 @@ public class AuthService {
             }
             // Generate access token
             String accessToken = jwtService.generateAccessToken(user);
-            String refreshTokenStr = jwtService.generateRefreshToken(user);
 
+            // Revoke all refresh tokens for the user
+            List<RefreshToken> refreshTokenList = refreshTokenRepository.findByUser_UidAndRevokedFalse(user.getUid()).orElse(List.of());
+            if (!refreshTokenList.isEmpty()) {
+                refreshTokenList.forEach(token -> token.setRevoked(true));
+                refreshTokenRepository.saveAll(refreshTokenList);
+            }
+
+            String refreshTokenStr = jwtService.generateRefreshToken(user);
             // Generate refresh token
             RefreshToken refreshToken = new RefreshToken();
             refreshToken.setRefreshToken(refreshTokenStr);
-            refreshToken.setUid(user.getUid());
+            refreshToken.setUser(user);
             refreshToken.setRevoked(false);
             refreshToken.setCreatedAt(new Date());
             refreshToken.setExpiryDate(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 7)); // 7 days
             refreshToken.setSessionStartAt(new Date());
             refreshTokenRepository.save(refreshToken);
+
+
             return AuthResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshTokenStr)

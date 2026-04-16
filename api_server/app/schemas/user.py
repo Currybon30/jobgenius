@@ -1,0 +1,31 @@
+from pydantic import BaseModel
+from datetime import datetime
+from typing import Optional
+from enum import Enum
+
+class PlanEnum(str, Enum):
+    FREE = "FREE"
+    PREMIUM = "PREMIUM"
+
+
+# 🔹 Response (what API returns)
+class UserResponse(BaseModel):
+    uid: int
+    plan: PlanEnum
+    plan_expiry: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+# 🔹 Create (if needed)
+class UserCreate(BaseModel):
+    uid: int
+    plan: PlanEnum = PlanEnum.FREE
+    plan_expiry: Optional[datetime] = None
+
+
+# 🔹 Update plan
+class UserPlanUpdate(BaseModel):
+    plan: PlanEnum
+    plan_expiry: Optional[datetime] = None

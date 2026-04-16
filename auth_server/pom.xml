@@ -38,6 +38,19 @@
 			<scope>provided</scope>
 		</dependency>
 
+		<!-- WebFlux (for reactive programming) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webflux</artifactId>
+		</dependency>
+
+		<!-- Stripe Java SDK -->
+		<dependency>
+			<groupId>com.stripe</groupId>
+			<artifactId>stripe-java</artifactId>
+			<version>24.0.0</version>
+		</dependency>
+
 		<!-- Web (REST API) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

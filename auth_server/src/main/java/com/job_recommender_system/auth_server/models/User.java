@@ -27,10 +27,10 @@ public class User {
     private String role = "USER";
 
     @Column(nullable = false)
-    private String tier = "FREE";
+    private String provider = "LOCAL";
 
     @Column(nullable = false)
-    private String provider = "LOCAL";
+    private boolean fastAPISync = false;
 
 
     // Getters and Setters
@@ -74,19 +74,19 @@ public class User {
         this.role = role;
     }
 
-    public String getTier() {
-        return tier;
-    }
-
-    public void setTier(String tier) {
-        this.tier = tier;
-    }
-
     public String getProvider() {
         return provider;
     }
 
     public void setProvider(String provider) {
         this.provider = provider;
+    }
+
+    public boolean isFastAPISync() {
+        return fastAPISync;
+    }
+
+    public void setFastAPISync(boolean isFastAPISync) {
+        this.fastAPISync = isFastAPISync;
     }
 }

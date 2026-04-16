@@ -1,6 +1,3 @@
-import os
-import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from app.helpers.llm_call import llm_call, safe_parse
 
 async def intent_goal_agent(resume_text, jd_text = None, user_goal = None):

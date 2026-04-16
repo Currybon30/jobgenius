@@ -1,8 +1,5 @@
-import os
-import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from ollama import AsyncClient
-from app.config import AI_MODEL_NAME, OLLAMA_HOST
+from app.core.config import settings
 
 async def resume_feedback_free_tier(resume_text, list_skills, jd_text = None, missing_skills = None, matching_score = 0, missing_skills_score = 0, metrics_score = 0, necessary_sections_score = 0):
     # list_skills is the list of skills including both hard and soft skills extracted from the resume
@@ -86,6 +83,6 @@ async def resume_feedback_free_tier(resume_text, list_skills, jd_text = None, mi
     
     
     
-    response = await AsyncClient(host=OLLAMA_HOST).generate(model=AI_MODEL_NAME, prompt=prompt)
+    response = await AsyncClient(host=settings.OLLAMA_HOST).generate(model=settings.AI_MODEL_NAME, prompt=prompt)
     return response.response
 

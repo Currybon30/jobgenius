@@ -1,17 +1,17 @@
 from ollama import AsyncClient
-from app.config import AI_MODEL_NAME, OLLAMA_HOST
+from api_server.app.core.config import settings
 import asyncio
 import json
 import re
 
 
-client = AsyncClient(OLLAMA_HOST)
+client = AsyncClient(settings.OLLAMA_HOST)
 
 async def llm_call(prompt: str):
     try:
         response = await asyncio.wait_for(
             client.generate(
-                model=AI_MODEL_NAME, 
+                model=settings.AI_MODEL_NAME, 
                 prompt=prompt,
                 options={"temperature": 0.2}),
             timeout=20

@@ -17,8 +17,13 @@ public class RefreshToken {
     @Column(nullable = false, unique = true)
     private String refreshToken;
 
-    @Column(nullable = false)
-    private Long uid;
+    @ManyToOne
+    @JoinColumn(
+            name = "uid",
+            nullable = false,
+            foreignKey = @ForeignKey(name = "fk_refresh_token_user")
+    )
+    private User user;
 
     @Column(nullable = false)
     private boolean revoked;
@@ -45,12 +50,12 @@ public class RefreshToken {
         this.refreshToken = refreshToken;
     }
 
-    public Long getUid() {
-        return uid;
+    public Long getUserId() {
+        return user.getUid();
     }
 
-    public void setUid(Long uid) {
-        this.uid = uid;
+    public void setUser(User user) {
+        this.user = user;
     }
 
     public boolean isRevoked() {
@@ -86,5 +91,6 @@ public class RefreshToken {
     public void setSessionStartAt(Date sessionStartAt) {
         this.sessionStartAt = sessionStartAt;
     }
+
 
 }

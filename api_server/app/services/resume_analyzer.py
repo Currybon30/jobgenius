@@ -1,12 +1,8 @@
-import sys
 import os
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-
 import pymupdf
-from api_server.app.internal_db.skills import SOFT_SKILL_NORMALIZATION, IT_SKILL_NORMALIZATION, BUSINESS_SKILL_NORMALIZATION
-from jd import extract_skills_from_jd_text
-from app.helpers.resume_helpers import normalize_text, match_variants
+from app.internal_db.skills import SOFT_SKILL_NORMALIZATION, IT_SKILL_NORMALIZATION, BUSINESS_SKILL_NORMALIZATION
+from app.services.jd import extract_skills_from_jd_text
+from api_server.app.helpers.resume_helper import normalize_text, match_variants
 import re
 from datetime import datetime
 
@@ -230,9 +226,9 @@ def calculate_resume_quality_score_for_free_tier(text: str, jd_provided: bool):
     
 
 ############################ TESTING #########################################
-from api_server.app.ai_agents.agent6_finalizer import resume_feedback_free_tier
-import asyncio
 if __name__ == "__main__":
+    from app.ai_agents.agent6_finalizer import resume_feedback_free_tier
+    import asyncio
     pdf_path = r"D:\IT\My Projects\job_recommender_system\api_server\external_resources\Tuong Nguyen Pham Resume.pdf"
     resume_text = extract_text_from_resume(pdf_path)
     
