@@ -70,7 +70,7 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/**").permitAll()
+                .requestMatchers("/auth/**", "/api/stripe/webhook").permitAll() // Allow unauthenticated access to auth endpoints and Stripe webhook
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth2 -> oauth2

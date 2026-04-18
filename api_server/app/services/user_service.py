@@ -1,5 +1,7 @@
-from fastapi import Depends
+from datetime import datetime
+from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
+from app.schemas.user import UserPlanUpdate
 from app.db.session import get_db
 from app.auth.dependencies import get_current_user_id
 from app.models.user import User
@@ -23,13 +25,24 @@ def get_current_user(db: Session = Depends(get_db), user_id: int = Depends(get_c
         return None
     return user
 
-def update_user_plan(db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id), new_plan: str = "FREE", plan_expiry: str = None):
+def update_user_plan(user_id: int, data: UserPlanUpdate, db: Session = Depends(get_db)):
     user = get_user_by_id(db, user_id)
     if not user:
-        return None
+        raise HTTPException(404, "User not found")
     
-    user.plan = new_plan
-    user.plan_expiry = plan_expiry
+    expiry = data.plan_expiry
+    
+    if data.new_plan == "PREMIUM" and expiry is None:
+        raise HTTPException(400, "PREMIUM requires expiry")
+    
+    if expiry == "" or expiry is None:
+        expiry = None
+    elif isinstance(expiry, str):
+        expiry = datetime.fromisoformat(expiry)
+    
+    
+    user.plan = data.new_plan
+    user.plan_expiry = expiry
     db.commit()
     db.refresh(user)
     return user

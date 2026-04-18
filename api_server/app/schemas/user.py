@@ -27,5 +27,5 @@ class UserCreate(BaseModel):
 
 # 🔹 Update plan
 class UserPlanUpdate(BaseModel):
-    plan: PlanEnum
+    new_plan: PlanEnum
     plan_expiry: Optional[datetime] = None

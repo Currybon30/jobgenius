@@ -42,5 +42,5 @@ def update_user_subscription_plan(user_id: int, db: Annotated[Session, Depends(g
     user = get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    updated_user = update_user_plan(db, user_id, data.plan, data.plan_expiry)
+    updated_user = update_user_plan(user_id=user_id, data=data, db=db)
     return updated_user
