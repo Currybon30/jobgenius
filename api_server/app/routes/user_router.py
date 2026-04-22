@@ -9,6 +9,9 @@ from app.models.user import User
 from app.helpers.auth_helper import is_owner, verify_api_key
 router = APIRouter(tags=["users"])
 from app.core.config import settings
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 @router.get("/api/users", response_model=UserResponse) # Query user info by user_id, only accessible by the user themselves
 def get_user_info(user_id: int, current_user: Annotated[User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
@@ -39,6 +42,8 @@ def add_user(db: Annotated[Session, Depends(get_db)], x_api_key: Annotated[str, 
 @router.put("/internal/users/{user_id}/plan/update", response_model=UserResponse)
 def update_user_subscription_plan(user_id: int, db: Annotated[Session, Depends(get_db)], x_api_key: Annotated[str, Header(...)], data: UserPlanUpdate):
     verify_api_key(x_api_key)
+    logging.info(f"Received request to update plan for user {user_id} with data: {data}")
+    
     user = get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")

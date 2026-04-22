@@ -20,7 +20,7 @@ public class FastAPIUpdates {
                             .path("/internal/users/{user_id}/plan/update")
                             .build(userId))
                     .bodyValue(
-                            Map.of("plan", newPlan,
+                            Map.of("new_plan", newPlan,
                                     "plan_expiry", newPlanExpiry)
                     )
                     .retrieve()

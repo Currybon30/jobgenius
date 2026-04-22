@@ -5,6 +5,9 @@ from app.schemas.user import UserPlanUpdate
 from app.db.session import get_db
 from app.auth.dependencies import get_current_user_id
 from app.models.user import User
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 def get_user_by_id(db: Session, user_id: int):
     return db.query(User).filter(User.uid == user_id).first()
@@ -40,9 +43,14 @@ def update_user_plan(user_id: int, data: UserPlanUpdate, db: Session = Depends(g
     elif isinstance(expiry, str):
         expiry = datetime.fromisoformat(expiry)
     
-    
+    logging.info(f"Updating user {user_id} plan to {data.new_plan} with expiry {expiry}")
     user.plan = data.new_plan
     user.plan_expiry = expiry
-    db.commit()
-    db.refresh(user)
+    try:
+        db.commit()
+        db.refresh(user)
+    except Exception as e:
+        logging.error(f"Error updating user plan: {e}")
+        db.rollback()
+        raise HTTPException(500, "Failed to update user plan")
     return user
