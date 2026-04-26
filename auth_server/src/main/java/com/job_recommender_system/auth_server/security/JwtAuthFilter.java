@@ -40,15 +40,24 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        String authHeader = request.getHeader("Authorization");
-        
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            // Invalid authorization header
+        String token = null;
+
+        // 🍪 Extract JWT from cookies
+        if (request.getCookies() != null) {
+            for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
+                if ("access_token".equals(cookie.getName())) {
+                    token = cookie.getValue();
+                    break;
+                }
+            }
+        }
+
+        // No token → continue filter chain
+        if (token == null) {
             filterChain.doFilter(request, response);
             return;
         }
-        String token = authHeader.substring(7); // Remove "Bearer " prefix
 
         try {
             if (jwtservice.validateToken(token)) {

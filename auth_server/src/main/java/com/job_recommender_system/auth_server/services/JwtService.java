@@ -1,6 +1,5 @@
 package com.job_recommender_system.auth_server.services;
 
-import com.job_recommender_system.auth_server.dto.AuthResponse;
 import com.job_recommender_system.auth_server.models.RefreshToken;
 import com.job_recommender_system.auth_server.models.User;
 import com.job_recommender_system.auth_server.repositories.RefreshTokenRepository;
@@ -16,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.Map;
 
 @Service
 public class JwtService {
@@ -65,13 +65,13 @@ public class JwtService {
                 .get("role", String.class);
     }
 
-    public String extractUserId(String token) {
+    public Long extractUserId(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getKey())
                 .build()
                 .parseClaimsJws(token)
                 .getBody()
-                .get("user_id", String.class);
+                .get("user_id", Long.class);
     }
 
     public Date extractExpiration(String token) {
@@ -104,8 +104,7 @@ public class JwtService {
                 .compact();
     }
 
-    public AuthResponse refreshAccessToken(String refreshToken, User user) {
-        refreshToken = refreshToken.replace("Bearer ", ""); // Remove "Bearer " prefix if present
+    public Map<String, String> refreshAccessToken(String refreshToken, User user) {
         RefreshToken token = refreshTokenRepository.findByRefreshToken(refreshToken)
                 .orElseThrow(() -> new RuntimeException("Invalid refresh token"));
 
@@ -137,11 +136,12 @@ public class JwtService {
         newToken.setSessionStartAt(token.getSessionStartAt()); // Keep the original session start time
         refreshTokenRepository.save(newToken);
 
-        return AuthResponse.builder()
-                .accessToken(newAccessToken)
-                .refreshToken(newRefreshTokenStr)
-                .errorMessage("")
-                .build();
+        Map<String, String> tokens = Map.of(
+                "access_token", newAccessToken,
+                "refresh_token", newRefreshTokenStr
+        );
+
+        return tokens;
     }
 
     @Transactional

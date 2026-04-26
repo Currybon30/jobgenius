@@ -15,6 +15,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -58,7 +60,7 @@ public class SecurityConfig {
         org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
         configuration.setAllowedOrigins(java.util.List.of("http://localhost:3000")); // Adjust as needed for frontend URL
         configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(java.util.List.of("Authorization", "Content-Type"));
+        configuration.setAllowedHeaders(java.util.List.of("Content-Type"));
         configuration.setAllowCredentials(true);
         org.springframework.web.cors.UrlBasedCorsConfigurationSource source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
@@ -85,6 +87,7 @@ public class SecurityConfig {
 
                         // Generate access token
                         String accessToken = jwtService.generateAccessToken(user);
+                        String refreshTokenValue = jwtService.generateRefreshToken(user);
 
                         List<RefreshToken> refreshTokenList = refreshTokenRepository.findByUser_UidAndRevokedFalse(user.getUid()).orElse(List.of());
                         if(!refreshTokenList.isEmpty()) {
@@ -96,7 +99,7 @@ public class SecurityConfig {
 
                         // Generate refresh token
                         RefreshToken refreshToken = new RefreshToken();
-                        refreshToken.setRefreshToken(jwtService.generateRefreshToken(user));
+                        refreshToken.setRefreshToken(refreshTokenValue);
                         refreshToken.setUser(user);
                         refreshToken.setRevoked(false);
                         refreshToken.setCreatedAt(new Date());
@@ -104,16 +107,28 @@ public class SecurityConfig {
                         refreshToken.setSessionStartAt(new Date());
                         refreshTokenRepository.save(refreshToken);
 
+                        ResponseCookie cookie = ResponseCookie.from("access_token", accessToken)
+                                .httpOnly(true)
+                                .secure(true)
+                                .path("/")
+                                .sameSite("None") // REQUIRED for React cross-origin
+                                .maxAge(15 * 60)
+                                .build();
+
+                        ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", refreshTokenValue)
+                                .httpOnly(true)
+                                .secure(true)
+                                .path("/auth/refresh") // 🔥 more restricted than "/"
+                                .sameSite("None")
+                                .maxAge(7 * 24 * 60 * 60) // 7 days
+                                .build();
+
                         // Return JSON response
                         res.setStatus(HttpServletResponse.SC_OK);
                         res.setContentType("application/json");
                         res.setCharacterEncoding("UTF-8");
-                        res.getWriter().write(
-                                "{"
-                                        + "\"accessToken\":\"" + accessToken + "\","
-                                        + "\"refreshToken\":\"" + refreshToken.getRefreshToken() + "\""
-                                        + "}"
-                        );
+                        res.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+                        res.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
                     })
                 .failureUrl("/auth/oauth2/failure") // Redirect after failed OAuth2 login
             )

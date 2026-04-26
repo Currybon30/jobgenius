@@ -1,6 +1,5 @@
 package com.job_recommender_system.auth_server.services;
 
-import com.job_recommender_system.auth_server.dto.AuthResponse;
 import com.job_recommender_system.auth_server.dto.FastAPICreateRequest;
 import com.job_recommender_system.auth_server.dto.LoginRequest;
 import com.job_recommender_system.auth_server.dto.RegisterRequest;
@@ -18,6 +17,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 @RequiredArgsConstructor
 @Service
@@ -70,7 +70,7 @@ public class AuthService {
         }
     }
 
-    public AuthResponse login(LoginRequest loginRequest) {
+    public Map<String, String> login(LoginRequest loginRequest) {
         try {
             User user = userRepository.findByEmail(loginRequest.getEmail())
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -101,30 +101,29 @@ public class AuthService {
             refreshToken.setSessionStartAt(new Date());
             refreshTokenRepository.save(refreshToken);
 
-
-            return AuthResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshTokenStr)
-                .errorMessage("")
-                .build();
+            Map<String, String> tokens = Map.of(
+                    "accessToken", accessToken,
+                    "refreshToken", refreshTokenStr
+            );
+            return tokens;
         } catch (Exception e) {
             throw new RuntimeException("Error logging in user: " + e.getMessage());
         }
     }
 
-    public void logout(String accessToken, String refreshToken) {
+    public void logout(String accessToken) {
         try {
+            Long userId = jwtService.extractUserId(accessToken);
             // Store access token in redis with expiry same as token expiry
-            accessToken = accessToken.replace("Bearer ", ""); // Remove "Bearer " prefix if present
             long ttl = jwtService.extractExpiration(accessToken).getTime() - System.currentTimeMillis();
             redisService.addToBlacklist(accessToken, ttl);
 
             // Revoke refresh token in database
-            refreshToken = refreshToken.replace("Bearer ", ""); // Remove "Bearer " prefix if present
-            RefreshToken token = refreshTokenRepository.findByRefreshToken(refreshToken)
-                .orElseThrow(() -> new RuntimeException("Invalid token"));
-            token.setRevoked(true);
-            refreshTokenRepository.save(token);
+            List<RefreshToken> refreshTokenList = refreshTokenRepository.findByUser_UidAndRevokedFalse(userId).orElse(List.of());
+            refreshTokenList.forEach(token -> {
+                token.setRevoked(true);
+                refreshTokenRepository.save(token);
+            });
         } catch (Exception e) {
             throw new RuntimeException("Error logging out user: " + e.getMessage());
         }
