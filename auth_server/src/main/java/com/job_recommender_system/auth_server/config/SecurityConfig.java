@@ -13,6 +13,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -39,6 +40,8 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    @Value("${REACT_DOMAIN}")
+    private String reactDomain;
     private final JwtAuthFilter jwtAuthFilter;
     private final RateLimitingFilter rateLimitingFilter;
     private final UserService userService;
@@ -129,6 +132,7 @@ public class SecurityConfig {
                         res.setCharacterEncoding("UTF-8");
                         res.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
                         res.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+                        res.sendRedirect(reactDomain); // Redirect to frontend after successful login. Adjust as needed for your frontend URL and routing.
                     })
                 .failureUrl("/auth/oauth2/failure") // Redirect after failed OAuth2 login
             )

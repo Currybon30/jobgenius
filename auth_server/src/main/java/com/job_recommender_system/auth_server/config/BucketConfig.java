@@ -34,8 +34,8 @@ public class BucketConfig {
     public Supplier<BucketConfiguration> bucketConfigurationSupplier() {
         return () -> BucketConfiguration.builder()
                 .addLimit(Bandwidth.classic(
-                        100, // for test purposes, set to 10 requests per 2 minutes
-                        Refill.intervally(100, Duration.ofMinutes(2))
+                        5,
+                        Refill.intervally(5, Duration.ofMinutes(1))
                 ))
                 .build();
     }

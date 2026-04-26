@@ -18,8 +18,6 @@ import java.util.List;
 @RequiredArgsConstructor
 @Service
 public class UserService {
-    @Value("${API_KEY}")
-    private String apiKey;
     private final WebClient webClient;
     private final UserRepository userRepository;
     private final Logger logger = LoggerFactory.getLogger(UserService.class);
