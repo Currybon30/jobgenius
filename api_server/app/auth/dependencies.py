@@ -1,11 +1,13 @@
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Depends, HTTPException, status, Request
 from app.auth.jwt_handler import decode_jwt
 
-security = HTTPBearer()
-
-def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> int:
-    access_token = credentials.credentials
+def get_current_user_id(request: Request) -> int:
+    access_token = request.cookies.get("access_token")
+    if not access_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Access token is missing"
+        )
     payload = decode_jwt(access_token)
 
     user_id = payload.get("user_id")
