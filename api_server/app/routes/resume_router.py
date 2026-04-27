@@ -38,6 +38,8 @@ async def analyze_resume_free_tier(resume_pdf: UploadFile = File(...), jd_text: 
                 "industry": industry,
                 "soft_skills": skills["soft_skills"],
                 "hard_skills": skills["skills"],
+                "matching_skills_score": 0,
+                "missing_skills": [],
                 "resume_quality_score": resume_quality_score,
                 "necessary_sections_score": necessary_sections_score,
                 "metrics_score": metrics_score
@@ -64,6 +66,8 @@ async def analyze_resume_free_tier(resume_pdf: UploadFile = File(...), jd_text: 
                 "industry": industry,
                 "soft_skills": skills["soft_skills"],
                 "hard_skills": skills["skills"],
+                "matching_skills_score": skills["matching_skills_score"],
+                "missing_skills": skills["missing_skills"],
                 "resume_quality_score": resume_quality_score,
                 "necessary_sections_score": necessary_sections_score,
                 "metrics_score": metrics_score
@@ -91,6 +95,8 @@ async def analyze_resume_free_tier(resume_pdf: UploadFile = File(...), jd_text: 
                 "industry": industry,
                 "soft_skills": skills["soft_skills"],
                 "hard_skills": skills["skills"],
+                "matching_skills_score": skills["matching_skills_score"],
+                "missing_skills": skills["missing_skills"],
                 "resume_quality_score": resume_quality_score,
                 "necessary_sections_score": necessary_sections_score,
                 "metrics_score": metrics_score
@@ -118,6 +124,8 @@ async def analyze_resume_free_tier(resume_pdf: UploadFile = File(...), jd_text: 
                 "industry": industry,
                 "soft_skills": skills["soft_skills"],
                 "hard_skills": skills["skills"],
+                "matching_skills_score": 0,
+                "missing_skills": [],
                 "resume_quality_score": resume_quality_score,
                 "necessary_sections_score": necessary_sections_score,
                 "metrics_score": metrics_score
