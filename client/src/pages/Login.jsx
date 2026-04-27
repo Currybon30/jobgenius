@@ -95,6 +95,16 @@ export function Login() {
             />
             <label htmlFor="password">Password</label>    
             </div>
+          <p className="forgot-password-text">
+            <a
+              href="#"
+              className="forgot-password-link is-disabled"
+              onClick={(e) => e.preventDefault()}
+              aria-disabled="true"
+            >
+              Forgot Password?
+            </a>
+          </p>
           <button type="submit">Login</button>
           <div className="third-app-section">
             <p className="third-app-text">Or continue with</p>
