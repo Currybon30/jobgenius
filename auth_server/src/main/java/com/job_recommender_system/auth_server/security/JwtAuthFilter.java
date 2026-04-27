@@ -1,6 +1,7 @@
 package com.job_recommender_system.auth_server.security;
 
 import com.job_recommender_system.auth_server.services.JwtService;
+import com.job_recommender_system.auth_server.services.RedisService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,6 +24,7 @@ import java.util.List;
 public class JwtAuthFilter extends OncePerRequestFilter {
     private final Logger logger = LoggerFactory.getLogger(JwtAuthFilter.class);
     private final JwtService jwtservice;
+    private final RedisService redisService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) 
@@ -60,7 +62,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         try {
-            if (jwtservice.validateToken(token)) {
+            if (jwtservice.validateToken(token) && !redisService.isBlacklisted(token)) {
                 String username = jwtservice.extractUsername(token);
                 String role = jwtservice.extractUserRole(token);
                 List<GrantedAuthority> authorities = List.of(

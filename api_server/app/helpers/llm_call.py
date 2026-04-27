@@ -1,11 +1,13 @@
 from ollama import AsyncClient
-from api_server.app.core.config import settings
+from app.core.config import settings
 import asyncio
 import json
 import re
+import logging
 
 
 client = AsyncClient(settings.OLLAMA_HOST)
+logger = logging.getLogger(__name__)
 
 async def llm_call(prompt: str):
     try:
@@ -18,10 +20,10 @@ async def llm_call(prompt: str):
         )
         return response.response
     except asyncio.TimeoutError:
-        print("[ERROR] LLM call timed out")
+        logger.error("[ERROR] LLM call timed out")
         return ""
     except Exception as e:
-        print(f"[ERROR] LLM call failed: {e}")
+        logger.error(f"[ERROR] LLM call failed: {e}")
         return ""
     
         
@@ -66,7 +68,7 @@ def safe_parse(response: str, agent_name="unknown"):
         pass
 
     # 4. Final fallback
-    print(f"[ERROR] {agent_name} returned invalid JSON")
+    logger.error(f"[ERROR] {agent_name} returned invalid JSON")
 
     return {
         "error": "Invalid JSON",

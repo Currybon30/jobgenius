@@ -1,13 +1,14 @@
 from ollama import AsyncClient
 from app.core.config import settings
 
-async def resume_feedback_free_tier(resume_text, list_skills, jd_text = None, missing_skills = None, matching_score = 0, missing_skills_score = 0, metrics_score = 0, necessary_sections_score = 0):
+async def resume_feedback_free_tier(resume_text, list_skills, jd_text = None, missing_skills = None, overall_score = 0, matching_score = 0, metrics_score = 0, necessary_sections_score = 0, user_goal = None):
     # list_skills is the list of skills including both hard and soft skills extracted from the resume
     # missing_skills is the list of skills that were not found in the resume
     # matching_score is the percentage of skills found in the resume
     # jd_text is the text of the job description
     # resume_text is the text of the resume
     #! For free tier users, we will provide basic feedback based on the skills found and missing, and the matching score.
+    #! Add user goal to the prompt later
     if jd_text is None or jd_text == "":
         prompt = f"""
             You are an AI resume reviewer.
@@ -23,6 +24,7 @@ async def resume_feedback_free_tier(resume_text, list_skills, jd_text = None, mi
             Since no job description was provided, we cannot analyze missing skills or provide a matching score.
             Only metrics score and necessary sections score will be considered for feedback.
             
+            - Overall Resume Score: {overall_score}%
             - Metrics Score: {metrics_score}%
             - Necessary Sections Score: {necessary_sections_score}%
 
@@ -58,8 +60,8 @@ async def resume_feedback_free_tier(resume_text, list_skills, jd_text = None, mi
             Missing Skills:
             {missing_skills}
             
-            Matching Score: {matching_score}% 
-            + Missing Skills Score: {missing_skills_score}%
+            - Overall Resume Score: {overall_score}%
+            - Matching Score: {matching_score}% 
             + Metrics Score: {metrics_score}%
             + Necessary Sections Score: {necessary_sections_score}%
 

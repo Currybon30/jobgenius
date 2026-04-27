@@ -1,6 +1,5 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Header, status
-from fastapi.params import Body
 from sqlalchemy.orm import Session
 from app.schemas.user import UserCreate, UserPlanUpdate, UserResponse
 from app.db.session import get_db
@@ -11,13 +10,13 @@ router = APIRouter(tags=["users"])
 from app.core.config import settings
 import logging
 
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-@router.get("/api/users", response_model=UserResponse) # Query user info by user_id, only accessible by the user themselves
+@router.get("/api/users/{user_id}", response_model=UserResponse) # Query user info by user_id, only accessible by the user themselves
 def get_user_info(user_id: int, current_user: Annotated[User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
     if not current_user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
-    if not is_owner(current_user.uid, user_id):
+    if not is_owner(user_id, current_user.uid):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
     user = get_user_by_id(db, user_id)
     if not user:
@@ -42,7 +41,7 @@ def add_user(db: Annotated[Session, Depends(get_db)], x_api_key: Annotated[str, 
 @router.put("/internal/users/{user_id}/plan/update", response_model=UserResponse)
 def update_user_subscription_plan(user_id: int, db: Annotated[Session, Depends(get_db)], x_api_key: Annotated[str, Header(...)], data: UserPlanUpdate):
     verify_api_key(x_api_key)
-    logging.info(f"Received request to update plan for user {user_id} with data: {data}")
+    logger.info(f"Received request to update plan for user {user_id} with data: {data}")
     
     user = get_user_by_id(db, user_id)
     if not user:

@@ -1,28 +1,39 @@
-import os
 import pymupdf
+from fastapi import UploadFile
 from app.internal_db.skills import SOFT_SKILL_NORMALIZATION, IT_SKILL_NORMALIZATION, BUSINESS_SKILL_NORMALIZATION
+from app.ai_agents.agent3_ats import has_metrics
+from app.helpers.resume_helper import extract_section_content
 from app.services.jd import extract_skills_from_jd_text
-from api_server.app.helpers.resume_helper import normalize_text, match_variants
+from app.helpers.resume_helper import normalize_text, match_variants
 import re
 from datetime import datetime
+import logging
 
-def extract_text_from_resume(file_path: str):
+logger = logging.getLogger(__name__)
+
+async def extract_text_from_resume(resume_pdf_file: UploadFile) -> str:
     try:
-        if not os.path.exists(file_path):
-            print(f"File not found: {file_path}")
-            return "File not found."
-        if not file_path.lower().endswith('.pdf'):
-            print(f"Unsupported file format: {file_path}")
-            return "Unsupported file format. Please upload a PDF."
-        doc = pymupdf.open(file_path)
+        if not resume_pdf_file.filename or not resume_pdf_file.filename.lower().endswith('.pdf'):
+            raise ValueError("Unsupported file format. Please upload a PDF.")
+        file_bytes = await resume_pdf_file.read()
+        if not file_bytes:
+            raise ValueError("Uploaded PDF is empty.")
+
+        doc = pymupdf.open(stream=file_bytes, filetype="pdf")
         text = ""
         for page in doc:
             text += page.get_text()
+        doc.close()
         return text
+    except FileNotFoundError as e:
+        logger.error(f"File not found: {resume_pdf_file.filename}")
+        raise e
+    except ValueError as e:
+        logger.error(f"Unsupported file format: {resume_pdf_file.filename}")
+        raise e
     except Exception as e:
-        print(f"Error extracting text from resume: {e}")
-        return ""
-    
+        logger.error(f"Error extracting text from resume: {e}")
+        raise e
     
 def extract_contact_info(text: str):
     # Use regex to find potential email addresses and phone numbers
@@ -32,7 +43,7 @@ def extract_contact_info(text: str):
     emails = re.findall(email_pattern, text)
     phones = re.findall(phone_pattern, text)
 
-    
+    logger.info(f"Extracted contact info - Emails: {emails}, Phones: {phones}")
     return {
         "emails": emails,
         "phone_numbers": phones
@@ -87,40 +98,8 @@ def extract_skills_from_text_with_jd(text: str, jd_text: str):
     }
     
 
-def extract_section_content(text: str):
-    text = re.sub(r'\r\n', '\n', text)
-    section_patterns = {
-        "summary": r'^\s*(summary|objective|profile|professional summary|professional objective|career objective)\b',
-        "skills": r'^\s*(skills|technical skills)\b',
-        "education": r'^\s*(education|academic background)\b',
-        "experience": r'^\s*(experience|work experience|employment history|professional experience)\b',
-        "projects": r'^\s*(projects|project experience)\b',
-        "certifications": r'^\s*(certifications|certification|courses|training|qualifications|credentials|licenses)\b',
-        "languages": r'^\s*(languages|language skills)\b',
-    }
-
-    matches = []
-    for section, pattern in section_patterns.items():
-        for match in re.finditer(pattern, text, re.IGNORECASE | re.MULTILINE): 
-            matches.append((section, match.start()))
-
-    matches.sort(key=lambda x: x[1])
-
-    extracted = {}
-    for i in range(len(matches)):
-        section, start = matches[i]
-        end = matches[i + 1][1] if i + 1 < len(matches) else len(text)
-
-        content = text[start:end].strip()
-
-        # keep longest match if duplicate section appears
-        if section not in extracted or len(content) > len(extracted[section]):
-            extracted[section] = content
-
-    return extracted
-
 def has_summary(text: str):
-    summary_pattern = r'^\s*(summary|objective|profile|professional summary|career objective|professional objective)\b'
+    summary_pattern = r'^\s*(summary|objective|profile|professional summary|career objective|professional objective|summary of qualification)\b'
     return re.search(summary_pattern, text, re.IGNORECASE | re.MULTILINE) is not None
 
 def estimate_experience_years(text: str):
@@ -146,95 +125,72 @@ def estimate_experience_years(text: str):
 
 
 def estimate_experience_years_from_sections(sections: dict):
-    text = ""
-
     # ✅ prioritize real experience
-    if "experience" in sections:
-        text += sections["experience"]
-
-    # ⚠️ fallback for juniors
-    elif "projects" in sections:
-        text += sections["projects"]
-
+    text = sections.get("experience", "")
+    if not text:
+        return 0
     return estimate_experience_years(text)
 
     
     
-def calculate_resume_quality_score_for_free_tier(text: str, jd_provided: bool):
+def calculate_resume_quality_score_for_free_tier(text: str, jd_provided: bool, jd_text: str = ""):
     score = 0
     sections = extract_section_content(text)
     years_exp = estimate_experience_years_from_sections(sections)
+    summary_present = has_summary(text)
     
     # -------------------------
-    # 1. Sections (0.2)
+    # 1. Sections (0.5)
     # -------------------------
-    section_score = 0
+    section_score = 0 
     if "skills" in sections:
         section_score += 0.5
     if "education" in sections:
         section_score += 0.5
 
-    score += 0.2 * section_score
+    score += 0.5 * section_score
     
     # -------------------------
     # 2. Experience presence (0.1)
     # -------------------------
     if "experience" in sections:
         score += 0.1
+        section_score += 0.5
     elif "projects" in sections:
         score += 0.07
+        section_score += 0.3
+        
         
     # -------------------------
-    # 3. Summary (0.05)
+    # 3. Summary (0.1)
     # -------------------------
     if years_exp >= 3:
-        score += 0.05 if has_summary(text) else 0
+        score += 0.1 if summary_present else 0
+        section_score += 0.5 if summary_present else 0
     else:
-        score += 0.05 if has_summary(text) else 0.03
+        score += 0.1 if summary_present else 0.03
+        section_score += 0.5 if summary_present else 0.03
 
     # -------------------------
-    # 4. Basic metrics (0.05)
+    # 4. Basic metrics (0.1)
     # -------------------------
-    exp_text = sections.get("experience", "") or sections.get("projects", "")
-    bullets = [b.strip() for b in re.split(r'[\n•\-]', exp_text) if b.strip()]
-
-    if bullets:
-        metric_count = sum(
-            bool(re.search(r'\d+%|\$\d+|\d+\s*(users|clients|x|times)', b, re.I))
-            for b in bullets
-        )
-        ratio = metric_count / len(bullets)
-
-        if ratio >= 0.5:
-            score += 0.05
-        elif ratio >= 0.3:
-            score += 0.03
-        elif ratio > 0:
-            score += 0.01
-            
+    metrics_score = has_metrics(text)
+    score += 0.1 * metrics_score
+    
+    # -------------------------
+    # 5. Contact info (0.2)
+    # -------------------------
+    contact_info = extract_contact_info(text)
+    if contact_info["emails"] and contact_info["phone_numbers"]:
+        score += 0.2
+    
+       
     if jd_provided:
-        # -------------------------
-        # 5. Skills match (0.7)
-        # -------------------------
-        skills_info = extract_skills_from_text_with_jd(text, "")
+        skills_info = extract_skills_from_text_with_jd(text, jd_text)
         score = 0.3 * score + 0.7 * skills_info["matching_skills_score"]
 
-    return round(score, 3) * 100 # Convert to percentage
+    # Keep the historical "section_score - 1.0" intent, but make it stable (0..1) before converting to percent.
+    necessary_sections_score = max(0.0, min(1.0, section_score - 1.0))
+    return round(score, 3) * 100, round(necessary_sections_score, 3) * 100, metrics_score
 
 ############################ Advanced features using AI #########################################
-
-    
-
-############################ TESTING #########################################
-if __name__ == "__main__":
-    from app.ai_agents.agent6_finalizer import resume_feedback_free_tier
-    import asyncio
-    pdf_path = r"D:\IT\My Projects\job_recommender_system\api_server\external_resources\Tuong Nguyen Pham Resume.pdf"
-    resume_text = extract_text_from_resume(pdf_path)
-    
-    skills = extract_skills_from_text_without_jd(resume_text, 'it')
-
-    skills = skills['skills'] + skills['soft_skills']
-
-    resume_feedback = asyncio.run(resume_feedback_free_tier(resume_text, skills))
-    print("AI Resume Feedback:", resume_feedback)

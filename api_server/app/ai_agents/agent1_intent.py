@@ -26,7 +26,7 @@ async def intent_goal_agent(resume_text, jd_text = None, user_goal = None):
     {{
     "target_role": "",
     "seniority_level": "",
-    "industry": "",
+    "industry": "", Example: "tech", "it", "business", "marketing", "sales", "finance", "customer service", "business development", "strategic planning", "negotiation", "supply chain management", "human resources", "hr", "etc.
     "priority_goals": [],
     "focus_areas": [],
     "top_keywords": [],
@@ -57,29 +57,4 @@ async def intent_goal_agent(resume_text, jd_text = None, user_goal = None):
     
     response = await llm_call(prompt)
     
-    return safe_parse(response, agent_name="intent_goal_agent")
-
-
-
-########################### TESTING ###########################
-if __name__ == "__main__":
-    import asyncio
-    import json
-
-    sample_resume = """
-    John Doe
-    Software Engineer with 5 years of experience in web development, specializing in Python and JavaScript. 
-    Worked at TechCorp from 2018 to 2023, leading a team of developers on various projects including an e-commerce platform and a real-time analytics dashboard. 
-    Holds a B.S. in Computer Science from State University.
-    """
-
-    sample_jd = """
-    We are looking for a Senior Software Engineer to join our team. The ideal candidate will have experience with Python, JavaScript, and cloud technologies. 
-    Responsibilities include developing scalable web applications, collaborating with cross-functional teams, and mentoring junior developers.
-    """
-
-    sample_user_goal = "I want to transition into a senior role in the tech industry."
-
-    result = asyncio.run(intent_goal_agent(sample_resume, sample_jd, sample_user_goal))
-    print(json.dumps(result, indent=2))
-    
+    return safe_parse(response, agent_name="intent_goal_agent")    

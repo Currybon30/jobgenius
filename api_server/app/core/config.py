@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from typing import Dict
+from typing import Dict, List
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -9,6 +9,16 @@ class Settings(BaseSettings):
     APP_NAME: str = "api_server"
     DEBUG: bool = True
     API_KEY: str
+    CORS_ALLOW_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://web.postman.co",
+    ]
+    CORS_ALLOW_CREDENTIALS: bool = True
+    CORS_ALLOW_METHODS: List[str] = ["*"]
+    CORS_ALLOW_HEADERS: List[str] = ["*"]
 
     # 🤖 AI
     AI_MODEL_NAME: str = "qwen2.5:7b"

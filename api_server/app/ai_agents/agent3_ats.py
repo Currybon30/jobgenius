@@ -1,4 +1,4 @@
-from app.services.resume_analyzer import extract_section_content
+from app.helpers.resume_helper import extract_section_content
 import re
 # Optional sections like certifications, languages detected in the resume is a plus
 def has_metrics(text:str):
