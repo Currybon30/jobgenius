@@ -43,7 +43,6 @@ def extract_contact_info(text: str):
     emails = re.findall(email_pattern, text)
     phones = re.findall(phone_pattern, text)
 
-    logger.info(f"Extracted contact info - Emails: {emails}, Phones: {phones}")
     return {
         "emails": emails,
         "phone_numbers": phones
@@ -169,7 +168,7 @@ def calculate_resume_quality_score_for_free_tier(text: str, jd_provided: bool, j
         section_score += 0.5 if summary_present else 0
     else:
         score += 0.1 if summary_present else 0.03
-        section_score += 0.5 if summary_present else 0.03
+        section_score += 0.5 if summary_present else 0.3
 
     # -------------------------
     # 4. Basic metrics (0.1)

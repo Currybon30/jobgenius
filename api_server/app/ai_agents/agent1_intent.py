@@ -1,4 +1,7 @@
 from app.helpers.llm_call import llm_call, safe_parse
+import logging
+
+logger = logging.getLogger(__name__)
 
 async def intent_goal_agent(resume_text, jd_text = None, user_goal = None):
     if jd_text is None or jd_text == "":
@@ -56,5 +59,7 @@ async def intent_goal_agent(resume_text, jd_text = None, user_goal = None):
     
     
     response = await llm_call(prompt)
+    
+    logger.info(f"Agent1_intent response: {response}")
     
     return safe_parse(response, agent_name="intent_goal_agent")    

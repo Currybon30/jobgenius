@@ -24,9 +24,14 @@ class Settings(BaseSettings):
     AI_MODEL_NAME: str = "qwen2.5:7b"
     OLLAMA_HOST: str = "http://localhost:11434"
 
-    # 🔎 Job Search API
+    # 🔎 Job Search API (RapidAPI - Global Jobs Search)
     JSEARCH_HOST: str = "https://jsearch.p.rapidapi.com"
     RAPIDAPI_KEY: str
+
+    # 🔎 Adzuna API (Vietnam Jobs Search)
+    ADZUNA_HOST: str = "https://api.adzuna.com/v1/api"
+    ADZUNA_APP_ID: str
+    ADZUNA_APP_KEY: str
 
     # 🔐 JWT
     JWT_SECRET_KEY: str
