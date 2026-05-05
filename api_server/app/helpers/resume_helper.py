@@ -1,5 +1,5 @@
-from typing import List
 import re
+from typing import List
 
 
 def normalize_text(text: str) -> str:
@@ -28,7 +28,7 @@ def extract_section_content(text: str):
 
     matches = []
     for section, pattern in section_patterns.items():
-        for match in re.finditer(pattern, text, re.IGNORECASE | re.MULTILINE): 
+        for match in re.finditer(pattern, text, re.IGNORECASE | re.MULTILINE):
             matches.append((section, match.start()))
 
     matches.sort(key=lambda x: x[1])

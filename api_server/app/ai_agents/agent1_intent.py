@@ -1,9 +1,11 @@
-from app.helpers.llm_call import llm_call, safe_parse
 import logging
+
+from app.helpers.llm_call import llm_call, safe_parse
 
 logger = logging.getLogger(__name__)
 
-async def intent_goal_agent(resume_text, jd_text = None, user_goal = None):
+
+async def intent_goal_agent(resume_text, jd_text=None, user_goal=None):
     if jd_text is None or jd_text == "":
         jd_text = "No job description provided."
     if user_goal is None or user_goal == "":
@@ -56,10 +58,9 @@ async def intent_goal_agent(resume_text, jd_text = None, user_goal = None):
 
     Return ONLY JSON.
     """
-    
-    
+
     response = await llm_call(prompt)
-    
+
     logger.info(f"Agent1_intent response: {response}")
-    
-    return safe_parse(response, agent_name="intent_goal_agent")    
+
+    return safe_parse(response, agent_name="intent_goal_agent")

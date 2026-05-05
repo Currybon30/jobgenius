@@ -1,5 +1,6 @@
-from fastapi import Depends, HTTPException, status, Request
 from app.auth.jwt_handler import decode_jwt
+from fastapi import Depends, HTTPException, Request, status
+
 
 def get_current_user_id(request: Request) -> int:
     access_token = request.cookies.get("access_token")

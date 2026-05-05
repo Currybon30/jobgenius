@@ -1,8 +1,10 @@
-from pydantic_settings import BaseSettings
-from typing import Dict, List
 from pathlib import Path
+from typing import Dict, List
+
+from pydantic_settings import BaseSettings
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
 
 class Settings(BaseSettings):
     # 🧠 App
@@ -56,6 +58,7 @@ class Settings(BaseSettings):
             "x-rapidapi-host": "jsearch.p.rapidapi.com",
             "x-rapidapi-key": self.RAPIDAPI_KEY,
         }
+
 
 # Singleton settings object
 settings = Settings()

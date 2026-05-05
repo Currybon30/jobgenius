@@ -1,7 +1,8 @@
-from app.core.config import settings
 import redis.asyncio as redis
+from app.core.config import settings
 
 redis_client: redis.Redis | None = None
+
 
 async def init_redis():
     global redis_client
@@ -11,9 +12,11 @@ async def init_redis():
         decode_responses=True
     )
 
+
 async def close_redis():
     await redis_client.close()
-    
+
+
 def get_redis_client() -> redis.Redis:
     if redis_client is None:
         raise Exception("Redis client not initialized")

@@ -1,7 +1,9 @@
-from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
 from enum import Enum
+from typing import Optional
+
+from pydantic import BaseModel
+
 
 class PlanEnum(str, Enum):
     FREE = "FREE"

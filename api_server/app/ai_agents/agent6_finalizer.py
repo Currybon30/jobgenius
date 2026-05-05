@@ -1,7 +1,8 @@
-from ollama import AsyncClient
 from app.core.config import settings
+from ollama import AsyncClient
 
-async def resume_feedback_free_tier(resume_text, list_skills, jd_text = None, missing_skills = None, overall_score = 0, matching_score = 0, metrics_score = 0, necessary_sections_score = 0, user_goal = None):
+
+async def resume_feedback_free_tier(resume_text, list_skills, jd_text=None, missing_skills=None, overall_score=0, matching_score=0, metrics_score=0, necessary_sections_score=0, user_goal=None):
     # list_skills is the list of skills including both hard and soft skills extracted from the resume
     # missing_skills is the list of skills that were not found in the resume
     # matching_score is the percentage of skills found in the resume
@@ -82,9 +83,6 @@ async def resume_feedback_free_tier(resume_text, list_skills, jd_text = None, mi
             - Structure Feedback
             - Simple Suggestions
             """
-    
-    
-    
+
     response = await AsyncClient(host=settings.OLLAMA_HOST).generate(model=settings.AI_MODEL_NAME, prompt=prompt)
     return response.response
-

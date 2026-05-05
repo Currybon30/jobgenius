@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Header, status, File, Body, UploadFile
-from fastapi.responses import JSONResponse
-from app.services.resume_analyzer import *
+import logging
+
 from app.ai_agents.agent1_intent import intent_goal_agent
 from app.ai_agents.agent6_finalizer import resume_feedback_free_tier
-import logging
+from app.services.resume_analyzer import *
+from fastapi import (APIRouter, Body, Depends, File, Header, HTTPException,
+                     UploadFile, status)
+from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 

@@ -1,7 +1,9 @@
-import requests
 import logging
 
+import requests
+
 logger = logging.getLogger(__name__)
+
 
 def get_user_city_and_country(ip_address=None):
     """
@@ -29,4 +31,5 @@ def get_user_city_and_country(ip_address=None):
 
 if __name__ == "__main__":
     city, country, country_code = get_user_city_and_country()
-    logger.info(f"User's City: {city}, Country: {country}, Country Code: {country_code}")
+    logger.info(
+        f"User's City: {city}, Country: {country}, Country Code: {country_code}")

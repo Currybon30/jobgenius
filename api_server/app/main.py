@@ -1,15 +1,15 @@
+from app.core.config import settings
+from app.core.logging_config import setup_logging
+from app.db.base import Base
+from app.db.redis import close_redis, init_redis
+from app.db.session import engine
+from app.middlewares.limit import rate_limit_middleware
+from app.middlewares.logging import logging_middleware
+from app.middlewares.timing import timing_middleware
+from app.routes.resume_router import router as resume_router
+from app.routes.user_router import router as user_router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.db.base import Base
-from app.core.config import settings
-from app.middlewares.timing import timing_middleware
-from app.middlewares.logging import logging_middleware
-from app.middlewares.limit import rate_limit_middleware
-from app.core.logging_config import setup_logging
-from app.routes.user_router import router as user_router
-from app.routes.resume_router import router as resume_router
-from app.db.session import engine
-from app.db.redis import init_redis, close_redis
 
 setup_logging()
 
@@ -22,7 +22,6 @@ app.add_middleware(
     allow_methods=settings.CORS_ALLOW_METHODS,
     allow_headers=settings.CORS_ALLOW_HEADERS,
 )
-
 
 
 app.include_router(user_router)

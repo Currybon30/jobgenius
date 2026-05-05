@@ -1,6 +1,7 @@
 import logging
 import sys
 
+
 def setup_logging():
     logging.basicConfig(
         level=logging.INFO,
@@ -8,7 +9,7 @@ def setup_logging():
         handlers=[logging.StreamHandler(sys.stdout)],
         force=True,  # important
     )
-    
+
     logging.getLogger("uvicorn").setLevel(logging.INFO)
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("uvicorn.error").setLevel(logging.INFO)
