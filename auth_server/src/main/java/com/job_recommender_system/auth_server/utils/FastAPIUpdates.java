@@ -1,18 +1,20 @@
 package com.job_recommender_system.auth_server.utils;
 
-import lombok.RequiredArgsConstructor;
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.Map;
+import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
 public class FastAPIUpdates {
     private final WebClient webClient;
     private final Logger logger = LoggerFactory.getLogger(FastAPIUpdates.class);
+
     public void updatePlanFastAPI(String userId, String newPlan, String newPlanExpiry) {
         try {
             webClient.put()
@@ -21,12 +23,12 @@ public class FastAPIUpdates {
                             .build(userId))
                     .bodyValue(
                             Map.of("new_plan", newPlan,
-                                    "plan_expiry", newPlanExpiry)
-                    )
+                                    "plan_expiry", newPlanExpiry))
                     .retrieve()
                     .bodyToMono(Void.class)
                     .block();
-            logger.info("Successfully updated plan for user {} to {} with expiry {} in FastAPI", userId, newPlan, newPlanExpiry);
+            logger.info("Successfully updated plan for user {} to {} with expiry {} in FastAPI", userId, newPlan,
+                    newPlanExpiry);
         } catch (Exception e) {
             logger.error("Failed to update plan for user {}: {}", userId, e.getMessage());
         }

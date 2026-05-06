@@ -1,5 +1,11 @@
 package com.job_recommender_system.auth_server.security;
 
+import java.io.IOException;
+import java.util.function.Supplier;
+
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.distributed.proxy.ProxyManager;
 import jakarta.servlet.FilterChain;
@@ -7,11 +13,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
-
-import java.io.IOException;
-import java.util.function.Supplier;
 
 @RequiredArgsConstructor
 @Component
@@ -21,8 +22,8 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain)
+            HttpServletResponse response,
+            FilterChain filterChain)
             throws IOException, ServletException {
         String ip = request.getHeader("X-Forwarded-For");
         if (ip == null || ip.isEmpty()) {
@@ -31,7 +32,8 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             // X-Forwarded-For can contain multiple IPs; the first one is the client
             ip = ip.split(",")[0].trim();
         }
-        var bucket = proxyManager.builder().build(ip, bucketConfigurationSupplier); // Get or create bucket for the client's IP address
+        var bucket = proxyManager.builder().build(ip, bucketConfigurationSupplier); // Get or create bucket for the
+                                                                                    // client's IP address
 
         if (bucket.tryConsume(1)) { // Consume 1 token for the request
             filterChain.doFilter(request, response); // Allow request to proceed

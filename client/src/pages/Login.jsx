@@ -33,17 +33,13 @@ export function Login() {
         email,
         password,
       };
-      const response = await axios.post(
+      await axios.post(
         `${import.meta.env.REACT_APP_API_URL}/auth/login`,
         body,
         { signal: controller.signal,
           withCredentials: true
          },
       );
-      const token = response.data?.token;
-      if (token) {
-        localStorage.setItem("token", token);
-      }
       navigate("/");
       toast.success("Login successful");
     } catch (error) {

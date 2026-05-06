@@ -1,16 +1,8 @@
 package com.job_recommender_system.auth_server.config;
 
-import com.job_recommender_system.auth_server.models.RefreshToken;
-import com.job_recommender_system.auth_server.models.User;
-import com.job_recommender_system.auth_server.repositories.RefreshTokenRepository;
-import com.job_recommender_system.auth_server.repositories.UserRepository;
-import com.job_recommender_system.auth_server.security.APIKeyFilter;
-import com.job_recommender_system.auth_server.security.JwtAuthFilter;
-import com.job_recommender_system.auth_server.security.RateLimitingFilter;
-import com.job_recommender_system.auth_server.services.JwtService;
-import com.job_recommender_system.auth_server.services.UserService;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
+import java.util.Date;
+import java.util.Objects;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,10 +22,20 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.Date;
-import java.util.List;
+import com.job_recommender_system.auth_server.models.RefreshToken;
+import com.job_recommender_system.auth_server.models.User;
+import com.job_recommender_system.auth_server.repositories.RefreshTokenRepository;
+import com.job_recommender_system.auth_server.repositories.UserRepository;
+import com.job_recommender_system.auth_server.security.APIKeyFilter;
+import com.job_recommender_system.auth_server.security.JwtAuthFilter;
+import com.job_recommender_system.auth_server.security.RateLimitingFilter;
+import com.job_recommender_system.auth_server.services.JwtService;
+import com.job_recommender_system.auth_server.services.UserService;
+import com.job_recommender_system.auth_server.utils.TokenHelper;
+
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @Configuration
@@ -49,7 +51,7 @@ public class SecurityConfig {
     private final RefreshTokenRepository refreshTokenRepository;
     private final JwtService jwtService;
     private final APIKeyFilter apiKeyFilter;
-    private final WebClient webClient;
+    private final TokenHelper tokenHelper;
     private final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
 
     @Bean
@@ -57,11 +59,12 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    //CORS config:
+    // CORS config:
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
-        configuration.setAllowedOrigins(java.util.List.of("http://localhost:3000")); // Adjust as needed for frontend URL
+        configuration.setAllowedOrigins(java.util.List.of("http://localhost:3000")); // Adjust as needed for frontend
+                                                                                     // URL
         configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(java.util.List.of("Content-Type"));
         configuration.setAllowCredentials(true);
@@ -73,92 +76,98 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable())
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/**", "/api/stripe/webhook").permitAll() // Allow unauthenticated access to auth endpoints and Stripe webhook
-                .anyRequest().authenticated()
-            )
-            .oauth2Login(oauth2 -> oauth2
-                    .userInfoEndpoint(userInfo ->
-                            userInfo.oidcUserService(oidcUserService())
-                    )
-                    .successHandler((req, res, auth) -> {
-                        OidcUser oidcUser = (OidcUser) auth.getPrincipal();
-                        String email = oidcUser.getEmail();
-                        User user = userRepository.findByEmail(email)
-                                .orElseThrow(() -> new RuntimeException("User not found"));
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/auth/**", "/api/stripe/webhook").permitAll() // Allow unauthenticated access
+                                                                                        // to auth endpoints and Stripe
+                                                                                        // webhook
+                        .anyRequest().authenticated())
+                .oauth2Login(oauth2 -> oauth2
+                        .userInfoEndpoint(userInfo -> userInfo.oidcUserService(oidcUserService()))
+                        .successHandler((req, res, auth) -> {
+                            OidcUser oidcUser = (OidcUser) auth.getPrincipal();
+                            String email = oidcUser.getEmail();
+                            User user = userRepository.findByEmail(email)
+                                    .orElseThrow(() -> new RuntimeException("User not found"));
 
-                        // Generate access token
-                        String accessToken = jwtService.generateAccessToken(user);
-                        String refreshTokenValue = jwtService.generateRefreshToken(user);
+                            // Generate access token
+                            String accessToken = jwtService.generateAccessToken(user);
+                            String refreshTokenValue = jwtService.generateRefreshToken(user);
 
-                        List<RefreshToken> refreshTokenList = refreshTokenRepository.findByUser_UidAndRevokedFalse(user.getUid()).orElse(List.of());
-                        if(!refreshTokenList.isEmpty()) {
-                            refreshTokenList.forEach(token -> {
-                                token.setRevoked(true);
-                                refreshTokenRepository.save(token);
-                            });
-                        }
+                            tokenHelper.refreshTokenList(user);
 
-                        // Generate refresh token
-                        RefreshToken refreshToken = new RefreshToken();
-                        refreshToken.setRefreshToken(refreshTokenValue);
-                        refreshToken.setUser(user);
-                        refreshToken.setRevoked(false);
-                        refreshToken.setCreatedAt(new Date());
-                        refreshToken.setExpiryDate(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 7)); // 7 days
-                        refreshToken.setSessionStartAt(new Date());
-                        refreshTokenRepository.save(refreshToken);
+                            // Generate refresh token
+                            RefreshToken refreshToken = new RefreshToken();
+                            refreshToken.setRefreshToken(refreshTokenValue);
+                            refreshToken.setUser(user);
+                            refreshToken.setRevoked(false);
+                            refreshToken.setCreatedAt(new Date());
+                            refreshToken.setExpiryDate(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 7)); // 7
+                                                                                                                         // days
+                            refreshToken.setSessionStartAt(new Date());
+                            refreshTokenRepository.save(refreshToken);
 
-                        ResponseCookie cookie = ResponseCookie.from("access_token", accessToken)
-                                .httpOnly(true)
-                                .secure(true)
-                                .path("/")
-                                .sameSite("None") // REQUIRED for React cross-origin
-                                .maxAge(15 * 60)
-                                .build();
+                            ResponseCookie cookie = ResponseCookie
+                                    .from("access_token", Objects.requireNonNull(accessToken))
+                                    .httpOnly(true)
+                                    .secure(true)
+                                    .path("/")
+                                    .sameSite("None") // REQUIRED for React cross-origin
+                                    .maxAge(15 * 60)
+                                    .build();
 
-                        ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", refreshTokenValue)
-                                .httpOnly(true)
-                                .secure(true)
-                                .path("/auth/refresh") // 🔥 more restricted than "/"
-                                .sameSite("None")
-                                .maxAge(7 * 24 * 60 * 60) // 7 days
-                                .build();
+                            ResponseCookie refreshCookie = ResponseCookie
+                                    .from("refresh_token", Objects.requireNonNull(refreshTokenValue))
+                                    .httpOnly(true)
+                                    .secure(true)
+                                    .path("/auth/refresh") // 🔥 more restricted than "/"
+                                    .sameSite("None")
+                                    .maxAge(7 * 24 * 60 * 60) // 7 days
+                                    .build();
 
-                        // Return JSON response
-                        res.setStatus(HttpServletResponse.SC_OK);
-                        res.setContentType("application/json");
-                        res.setCharacterEncoding("UTF-8");
-                        res.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-                        res.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
-                        res.sendRedirect(reactDomain); // Redirect to frontend after successful login. Adjust as needed for your frontend URL and routing.
-                    })
-                .failureUrl("/auth/oauth2/failure") // Redirect after failed OAuth2 login
-            )
-            .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class) // Add rate limiting filter before JWT authentication filter
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class)
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .exceptionHandling(ex -> ex
-                .authenticationEntryPoint((req, res, e) ->
-                    res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"))
-                .accessDeniedHandler((req, res, e) ->
-                    res.sendError(HttpServletResponse.SC_FORBIDDEN, "Forbidden"))
-            )
-            // Explanation: Disable default HTTP Basic auth, since we're using JWTs for authentication. This prevents browsers from showing a login dialog when accessing protected endpoints without a valid token.
-            .httpBasic(httpBasic -> httpBasic.disable())
+                            // Return JSON response
+                            res.setStatus(HttpServletResponse.SC_OK);
+                            res.setContentType("application/json");
+                            res.setCharacterEncoding("UTF-8");
+                            res.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+                            res.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+                            res.sendRedirect(reactDomain); // Redirect to frontend after successful login. Adjust as
+                                                           // needed for your frontend URL and routing.
+                        })
+                        .failureUrl("/auth/oauth2/failure") // Redirect after failed OAuth2 login
+                )
+                .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class) // Add rate limiting
+                                                                                                 // filter before JWT
+                                                                                                 // authentication
+                                                                                                 // filter
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(
+                                (req, res, e) -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"))
+                        .accessDeniedHandler(
+                                (req, res, e) -> res.sendError(HttpServletResponse.SC_FORBIDDEN, "Forbidden")))
+                // Explanation: Disable default HTTP Basic auth, since we're using JWTs for
+                // authentication. This prevents browsers from showing a login dialog when
+                // accessing protected endpoints without a valid token.
+                .httpBasic(httpBasic -> httpBasic.disable())
 
-            // Explanation: Disable form-based login, as we are not using traditional username/password form authentication. This ensures that Spring Security does not attempt to handle login requests with a form, which is unnecessary in a JWT-based stateless authentication setup.
-            .formLogin(formLogin -> formLogin.disable())
+                // Explanation: Disable form-based login, as we are not using traditional
+                // username/password form authentication. This ensures that Spring Security does
+                // not attempt to handle login requests with a form, which is unnecessary in a
+                // JWT-based stateless authentication setup.
+                .formLogin(formLogin -> formLogin.disable())
 
-            // Explanation: Disable logout functionality, since in a stateless JWT authentication system, there is no server-side session to invalidate. Logout can be handled on the client side by simply deleting the JWT token.
-            .logout(logout -> logout.disable())
+                // Explanation: Disable logout functionality, since in a stateless JWT
+                // authentication system, there is no server-side session to invalidate. Logout
+                // can be handled on the client side by simply deleting the JWT token.
+                .logout(logout -> logout.disable())
 
-            .cors(cors -> cors.configurationSource(corsConfigurationSource())); // Enable CORS with the defined configuration
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())); // Enable CORS with the defined
+                                                                                    // configuration
         return http.build();
     }
-
 
     // ---------------- OAuth 2.0 Login Configuration ----------------
     @Bean

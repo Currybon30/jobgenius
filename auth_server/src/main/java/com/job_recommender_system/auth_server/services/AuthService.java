@@ -1,13 +1,9 @@
 package com.job_recommender_system.auth_server.services;
 
-import com.job_recommender_system.auth_server.dto.FastAPICreateRequest;
-import com.job_recommender_system.auth_server.dto.LoginRequest;
-import com.job_recommender_system.auth_server.dto.RegisterRequest;
-import com.job_recommender_system.auth_server.models.RefreshToken;
-import com.job_recommender_system.auth_server.models.User;
-import com.job_recommender_system.auth_server.repositories.RefreshTokenRepository;
-import com.job_recommender_system.auth_server.repositories.UserRepository;
-import lombok.RequiredArgsConstructor;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,9 +11,16 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import com.job_recommender_system.auth_server.dto.FastAPICreateRequest;
+import com.job_recommender_system.auth_server.dto.LoginRequest;
+import com.job_recommender_system.auth_server.dto.RegisterRequest;
+import com.job_recommender_system.auth_server.models.RefreshToken;
+import com.job_recommender_system.auth_server.models.User;
+import com.job_recommender_system.auth_server.repositories.RefreshTokenRepository;
+import com.job_recommender_system.auth_server.repositories.UserRepository;
+import com.job_recommender_system.auth_server.utils.TokenHelper;
+
+import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @Service
@@ -32,12 +35,13 @@ public class AuthService {
     private final RedisService redisService;
     private final WebClient webClient;
     private final Logger logger = LoggerFactory.getLogger(AuthService.class);
+    private final TokenHelper tokenHelper;
 
     public void register(RegisterRequest registerRequest) {
         try {
             User user = userRepository.findByEmail(registerRequest.getEmail()).orElse(null);
 
-            if(user != null) {
+            if (user != null) {
                 if ("GOOGLE".equals(user.getProvider())) {
                     // MERGE: enable password login too
                     user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
@@ -53,7 +57,7 @@ public class AuthService {
             }
             user = userRepository.save(user);
 
-            if(!user.isFastAPISync()) {
+            if (!user.isFastAPISync()) {
                 webClient.post()
                         .uri("/internal/users/add")
                         .bodyValue(new FastAPICreateRequest(user.getUid()))
@@ -64,8 +68,7 @@ public class AuthService {
                 user.setFastAPISync(true);
                 userRepository.save(user);
             }
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             logger.error("Error registering user: " + e.getMessage());
         }
     }
@@ -73,8 +76,9 @@ public class AuthService {
     public Map<String, String> login(LoginRequest loginRequest) {
         try {
             User user = userRepository.findByEmail(loginRequest.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-            if (user.getPassword().equals("OAUTH2_USER") || "GOOGLE".equals(user.getProvider()) || user.getPassword() == null) {
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+            if (user.getPassword().equals("OAUTH2_USER") || "GOOGLE".equals(user.getProvider())
+                    || user.getPassword() == null) {
                 throw new RuntimeException("Error occurred during login. Please try again.");
             }
             if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
@@ -83,12 +87,7 @@ public class AuthService {
             // Generate access token
             String accessToken = jwtService.generateAccessToken(user);
 
-            // Revoke all refresh tokens for the user
-            List<RefreshToken> refreshTokenList = refreshTokenRepository.findByUser_UidAndRevokedFalse(user.getUid()).orElse(List.of());
-            if (!refreshTokenList.isEmpty()) {
-                refreshTokenList.forEach(token -> token.setRevoked(true));
-                refreshTokenRepository.saveAll(refreshTokenList);
-            }
+            tokenHelper.refreshTokenList(user);
 
             String refreshTokenStr = jwtService.generateRefreshToken(user);
             // Generate refresh token
@@ -103,8 +102,7 @@ public class AuthService {
 
             Map<String, String> tokens = Map.of(
                     "accessToken", accessToken,
-                    "refreshToken", refreshTokenStr
-            );
+                    "refreshToken", refreshTokenStr);
             return tokens;
         } catch (Exception e) {
             throw new RuntimeException("Error logging in user: " + e.getMessage());
@@ -119,7 +117,8 @@ public class AuthService {
             redisService.addToBlacklist(accessToken, ttl);
 
             // Revoke refresh token in database
-            List<RefreshToken> refreshTokenList = refreshTokenRepository.findByUser_UidAndRevokedFalse(userId).orElse(List.of());
+            List<RefreshToken> refreshTokenList = refreshTokenRepository.findByUser_UidAndRevokedFalse(userId)
+                    .orElse(List.of());
             refreshTokenList.forEach(token -> {
                 token.setRevoked(true);
                 refreshTokenRepository.save(token);

@@ -1,7 +1,8 @@
 package com.job_recommender_system.auth_server.services;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
+
+import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 public abstract class PaymentService {

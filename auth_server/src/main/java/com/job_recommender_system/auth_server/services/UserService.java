@@ -1,19 +1,20 @@
 package com.job_recommender_system.auth_server.services;
 
-import com.job_recommender_system.auth_server.dto.FastAPICreateRequest;
-import com.job_recommender_system.auth_server.models.User;
-import com.job_recommender_system.auth_server.repositories.UserRepository;
-import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.List;
+import com.job_recommender_system.auth_server.dto.FastAPICreateRequest;
+import com.job_recommender_system.auth_server.models.User;
+import com.job_recommender_system.auth_server.repositories.UserRepository;
+
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @Service
@@ -21,12 +22,15 @@ public class UserService {
     private final WebClient webClient;
     private final UserRepository userRepository;
     private final Logger logger = LoggerFactory.getLogger(UserService.class);
+
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
+
     public User getUserByEmail(String email) {
         return userRepository.findByEmail(email).orElse(null);
     }
+
     public User getUserById(Long id) {
         return userRepository.findById(id).orElse(null);
     }

@@ -1,9 +1,10 @@
 package com.job_recommender_system.auth_server.repositories;
 
-import com.job_recommender_system.auth_server.models.PaymentMetadata;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.Optional;
+import com.job_recommender_system.auth_server.models.PaymentMetadata;
 
 public interface PaymentMetadataRepository extends JpaRepository<PaymentMetadata, Long> {
     Optional<PaymentMetadata> findByPayment_PaymentId(Long paymentId);

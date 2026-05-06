@@ -1,5 +1,14 @@
 package com.job_recommender_system.auth_server.services;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Service;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.job_recommender_system.auth_server.dto.StripePaymentRequest;
 import com.job_recommender_system.auth_server.models.Payment;
@@ -19,21 +28,16 @@ import com.stripe.model.Subscription;
 import com.stripe.model.checkout.Session;
 import com.stripe.net.Webhook;
 import com.stripe.param.checkout.SessionCreateParams;
-import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
-import org.springframework.stereotype.Service;
 
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.Map;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class StripePaymentService extends PaymentService {
-    /*@Value("${STRIPE_WEBHOOK_SECRET_KEY}")
-    private String endpointSecret;*/
+    /*
+     * @Value("${STRIPE_WEBHOOK_SECRET_KEY}")
+     * private String endpointSecret;
+     */
     private final PaymentRepository paymentRepository;
     private final PaymentMetadataRepository paymentMetadataRepository;
     private final UserRepository userRepository;
@@ -58,25 +62,22 @@ public class StripePaymentService extends PaymentService {
 
         payment = paymentRepository.save(payment);
 
-        SessionCreateParams params =
-                SessionCreateParams.builder()
-                        .setMode(SessionCreateParams.Mode.SUBSCRIPTION)
-                        .setSuccessUrl(req.getSuccessUrl())
-                        .setCancelUrl(req.getCancelUrl())
-                        .setCustomerEmail(user.getEmail())
-                        .setSubscriptionData(
-                                SessionCreateParams.SubscriptionData.builder()
-                                        .setTrialPeriodDays(14L)
-                                        .build()
-                        )
-                        .putMetadata("userId", user.getUid().toString())
-                        .addLineItem(
-                                SessionCreateParams.LineItem.builder()
-                                        .setQuantity(1L)
-                                        .setPrice("price_1TN2z21euurRhDPhjypYOpec")
-                                        .build()
-                        )
-                        .build();
+        SessionCreateParams params = SessionCreateParams.builder()
+                .setMode(SessionCreateParams.Mode.SUBSCRIPTION)
+                .setSuccessUrl(req.getSuccessUrl())
+                .setCancelUrl(req.getCancelUrl())
+                .setCustomerEmail(user.getEmail())
+                .setSubscriptionData(
+                        SessionCreateParams.SubscriptionData.builder()
+                                .setTrialPeriodDays(14L)
+                                .build())
+                .putMetadata("userId", user.getUid().toString())
+                .addLineItem(
+                        SessionCreateParams.LineItem.builder()
+                                .setQuantity(1L)
+                                .setPrice("price_1TN2z21euurRhDPhjypYOpec")
+                                .build())
+                .build();
 
         Session session = Session.create(params);
         payment.setAmount(session.getAmountTotal());
@@ -108,9 +109,17 @@ public class StripePaymentService extends PaymentService {
     }
 
     @Override
-    public void handleWebhook(String payload, String sigHeader) throws JsonProcessingException, EventDataObjectDeserializationException {
+    public void handleWebhook(String payload, String sigHeader)
+            throws JsonProcessingException, EventDataObjectDeserializationException {
 
-        String endpointSecret = "whsec_a2efe90df2c747b523120156460089cc171fe04c086586e387848cf1e9523a04"; // move this to application properties or environment variable in production
+        String endpointSecret = "whsec_a2efe90df2c747b523120156460089cc171fe04c086586e387848cf1e9523a04"; // move this
+                                                                                                          // to
+                                                                                                          // application
+                                                                                                          // properties
+                                                                                                          // or
+                                                                                                          // environment
+                                                                                                          // variable in
+                                                                                                          // production
 
         Event event;
         try {
@@ -119,7 +128,7 @@ public class StripePaymentService extends PaymentService {
             throw new RuntimeException(e);
         }
 
-        switch(event.getType()) {
+        switch (event.getType()) {
             /**
              * 🔥 1. Checkout completed (FIRST TIME subscription)
              */
@@ -130,7 +139,7 @@ public class StripePaymentService extends PaymentService {
                 if (deserializer.getObject().isPresent()) {
                     session = (Session) deserializer.getObject().get();
                 } else {
-                    
+
                     session = (Session) deserializer.deserializeUnsafe();
                 }
                 System.out.println("Received checkout.session.completed event for session: " + session.getId());
@@ -143,7 +152,8 @@ public class StripePaymentService extends PaymentService {
                     payment.setUpdatedAt(OffsetDateTime.now(ZoneOffset.UTC));
                     paymentRepository.save(payment);
 
-                    PaymentMetadata paymentMetadata = paymentMetadataRepository.findByPayment_PaymentId(payment.getPaymentId())
+                    PaymentMetadata paymentMetadata = paymentMetadataRepository
+                            .findByPayment_PaymentId(payment.getPaymentId())
                             .orElseThrow(() -> new RuntimeException("Payment metadata not found"));
                     paymentMetadata.setKey("Stripe_SubscriptionId");
                     paymentMetadata.setValue(session.getSubscription());
@@ -152,7 +162,8 @@ public class StripePaymentService extends PaymentService {
                     User user = payment.getUser();
                     Long uid = user.getUid();
                     String planExpiry = OffsetDateTime.now(ZoneOffset.UTC)
-                            .plusDays(14) // Trial period of 14 days for first time subscription, after that it will be automatically renewed and charged by Stripe every month
+                            .plusDays(14) // Trial period of 14 days for first time subscription, after that it will be
+                                          // automatically renewed and charged by Stripe every month
                             .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
                     fastAPIUpdates.updatePlanFastAPI(uid.toString(), "PREMIUM", planExpiry);
                 }
@@ -168,16 +179,19 @@ public class StripePaymentService extends PaymentService {
                 if (deserializer.getObject().isPresent()) {
                     invoice = (Invoice) deserializer.getObject().get();
                 } else {
-                    
+
                     invoice = (Invoice) deserializer.deserializeUnsafe();
                 }
 
-                if (invoice == null) return;
+                if (invoice == null)
+                    return;
 
                 String subId = invoice.getSubscription();
 
-                PaymentMetadata paymentMetadata = paymentMetadataRepository.findByKeyAndValue("Stripe_SubscriptionId", subId);
-                if (paymentMetadata == null) return;
+                PaymentMetadata paymentMetadata = paymentMetadataRepository.findByKeyAndValue("Stripe_SubscriptionId",
+                        subId);
+                if (paymentMetadata == null)
+                    return;
                 Payment payment = paymentMetadata.getPayment();
 
                 if (payment != null) {
@@ -197,7 +211,8 @@ public class StripePaymentService extends PaymentService {
 
             /**
              * ❌ 3. Recurring payment failed (card expired, insufficient fund, etc)
-             * Recharge will be automatically retried by Stripe, but we should mark the payment as failed and update user plan to FREE immediately
+             * Recharge will be automatically retried by Stripe, but we should mark the
+             * payment as failed and update user plan to FREE immediately
              */
             case "invoice.payment_failed": {
                 EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
@@ -207,16 +222,19 @@ public class StripePaymentService extends PaymentService {
                 if (deserializer.getObject().isPresent()) {
                     failedInvoice = (Invoice) deserializer.getObject().get();
                 } else {
-                    
+
                     failedInvoice = (Invoice) deserializer.deserializeUnsafe();
                 }
 
-                if (failedInvoice == null) return;
+                if (failedInvoice == null)
+                    return;
 
                 String failedSubId = failedInvoice.getSubscription();
 
-                PaymentMetadata failedPaymentMetadata = paymentMetadataRepository.findByKeyAndValue("Stripe_SubscriptionId", failedSubId);
-                if (failedPaymentMetadata == null) return;
+                PaymentMetadata failedPaymentMetadata = paymentMetadataRepository
+                        .findByKeyAndValue("Stripe_SubscriptionId", failedSubId);
+                if (failedPaymentMetadata == null)
+                    return;
                 Payment failedPayment = failedPaymentMetadata.getPayment();
 
                 if (failedPayment != null) {
@@ -232,7 +250,7 @@ public class StripePaymentService extends PaymentService {
             }
 
             /**
-             *  4. Subscription updated (cancel at period end, resume, etc.)
+             * 4. Subscription updated (cancel at period end, resume, etc.)
              */
             case "customer.subscription.updated": {
                 EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
@@ -242,16 +260,19 @@ public class StripePaymentService extends PaymentService {
                 if (deserializer.getObject().isPresent()) {
                     updatedSub = (Subscription) deserializer.getObject().get();
                 } else {
-                    
+
                     updatedSub = (Subscription) deserializer.deserializeUnsafe();
                 }
 
-                if (updatedSub == null) return;
+                if (updatedSub == null)
+                    return;
 
                 String updatedSubId = updatedSub.getId();
 
-                PaymentMetadata updatedPaymentMetadata = paymentMetadataRepository.findByKeyAndValue("Stripe_SubscriptionId", updatedSubId);
-                if (updatedPaymentMetadata == null) return;
+                PaymentMetadata updatedPaymentMetadata = paymentMetadataRepository
+                        .findByKeyAndValue("Stripe_SubscriptionId", updatedSubId);
+                if (updatedPaymentMetadata == null)
+                    return;
                 Payment updatedPayment = updatedPaymentMetadata.getPayment();
                 if (updatedPayment != null) {
                     if (Boolean.TRUE.equals(updatedSub.getCancelAtPeriodEnd())) {
@@ -284,16 +305,19 @@ public class StripePaymentService extends PaymentService {
                 if (deserializer.getObject().isPresent()) {
                     deletedSub = (Subscription) deserializer.getObject().get();
                 } else {
-                    
+
                     deletedSub = (Subscription) deserializer.deserializeUnsafe();
                 }
 
-                if (deletedSub == null) return;
+                if (deletedSub == null)
+                    return;
 
                 String deletedSubId = deletedSub.getId();
 
-                PaymentMetadata deletedPaymentMetadata = paymentMetadataRepository.findByKeyAndValue("Stripe_SubscriptionId", deletedSubId);
-                if (deletedPaymentMetadata == null) return;
+                PaymentMetadata deletedPaymentMetadata = paymentMetadataRepository
+                        .findByKeyAndValue("Stripe_SubscriptionId", deletedSubId);
+                if (deletedPaymentMetadata == null)
+                    return;
                 Payment deletedPayment = deletedPaymentMetadata.getPayment();
                 if (deletedPayment != null) {
                     deletedPayment.setStatus(PaymentStatus.CANCELLED);

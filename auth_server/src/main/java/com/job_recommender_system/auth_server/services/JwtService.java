@@ -1,21 +1,23 @@
 package com.job_recommender_system.auth_server.services;
 
-import com.job_recommender_system.auth_server.models.RefreshToken;
-import com.job_recommender_system.auth_server.models.User;
-import com.job_recommender_system.auth_server.repositories.RefreshTokenRepository;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
-import jakarta.transaction.Transactional;
+import java.security.Key;
+import java.util.Date;
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.security.Key;
-import java.util.Date;
-import java.util.Map;
+import com.job_recommender_system.auth_server.models.RefreshToken;
+import com.job_recommender_system.auth_server.models.User;
+import com.job_recommender_system.auth_server.repositories.RefreshTokenRepository;
+
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+import jakarta.transaction.Transactional;
 
 @Service
 public class JwtService {
@@ -86,9 +88,9 @@ public class JwtService {
     public boolean validateToken(String token) {
         try {
             Jwts.parserBuilder()
-                .setSigningKey(getKey())
-                .build()
-                .parseClaimsJws(token);
+                    .setSigningKey(getKey())
+                    .build()
+                    .parseClaimsJws(token);
             return true;
         } catch (Exception e) {
             return false;
@@ -112,7 +114,7 @@ public class JwtService {
             throw new RuntimeException("Refresh token is revoked or expired.");
         }
 
-        if(!validateToken(refreshToken)) {
+        if (!validateToken(refreshToken)) {
             throw new RuntimeException("Invalid refresh token");
         }
 
@@ -138,8 +140,7 @@ public class JwtService {
 
         Map<String, String> tokens = Map.of(
                 "access_token", newAccessToken,
-                "refresh_token", newRefreshTokenStr
-        );
+                "refresh_token", newRefreshTokenStr);
 
         return tokens;
     }

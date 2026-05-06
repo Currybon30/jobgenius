@@ -1,20 +1,27 @@
 package com.job_recommender_system.auth_server.controllers;
 
-import com.job_recommender_system.auth_server.dto.LoginRequest;
-import com.job_recommender_system.auth_server.models.User;
-import com.job_recommender_system.auth_server.repositories.RefreshTokenRepository;
-import com.job_recommender_system.auth_server.repositories.UserRepository;
-import com.job_recommender_system.auth_server.services.AuthService;
-import com.job_recommender_system.auth_server.services.JwtService;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
+import java.util.Map;
+import java.util.Objects;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
+import com.job_recommender_system.auth_server.dto.LoginRequest;
+import com.job_recommender_system.auth_server.models.User;
+import com.job_recommender_system.auth_server.repositories.UserRepository;
+import com.job_recommender_system.auth_server.services.AuthService;
+import com.job_recommender_system.auth_server.services.JwtService;
+
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @RestController
@@ -23,15 +30,14 @@ public class LoginController {
     private final AuthService authService;
     private final JwtService jwtService;
     private final UserRepository userRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
-    
+
     @PostMapping("/login")
     public ResponseEntity<String> login(@RequestBody LoginRequest loginRequest, HttpServletResponse response) {
         try {
             Map<String, String> tokens = authService.login(loginRequest);
             String accessToken = tokens.get("access_token");
             String refreshToken = tokens.get("refresh_token");
-            ResponseCookie cookie = ResponseCookie.from("access_token", accessToken)
+            ResponseCookie cookie = ResponseCookie.from("access_token", Objects.requireNonNull(accessToken))
                     .httpOnly(true)
                     .secure(true)
                     .path("/")
@@ -39,7 +45,7 @@ public class LoginController {
                     .maxAge(15 * 60)
                     .build();
 
-            ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", refreshToken)
+            ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", Objects.requireNonNull(refreshToken))
                     .httpOnly(true)
                     .secure(true)
                     .path("/auth/refresh") // 🔥 more restricted than "/"
@@ -56,7 +62,8 @@ public class LoginController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<String> logout(@CookieValue(name = "access_token", required = false) String accessToken, HttpServletResponse response) {
+    public ResponseEntity<String> logout(@CookieValue(name = "access_token", required = false) String accessToken,
+            HttpServletResponse response) {
         try {
             authService.logout(accessToken);
 
@@ -85,7 +92,8 @@ public class LoginController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<?> refreshToken(@CookieValue(name = "refresh_token", required = false) String refreshToken, HttpServletResponse response) {
+    public ResponseEntity<?> refreshToken(@CookieValue(name = "refresh_token", required = false) String refreshToken,
+            HttpServletResponse response) {
         try {
             String userEmail = jwtService.extractUsername(refreshToken);
             User user = userRepository.findByEmail(userEmail)
@@ -95,7 +103,7 @@ public class LoginController {
             String newAccessToken = tokens.get("access_token");
             String newRefreshToken = tokens.get("refresh_token");
 
-            ResponseCookie cookie = ResponseCookie.from("access_token", newAccessToken)
+            ResponseCookie cookie = ResponseCookie.from("access_token", Objects.requireNonNull(newAccessToken))
                     .httpOnly(true)
                     .secure(true)
                     .path("/")
@@ -103,7 +111,7 @@ public class LoginController {
                     .maxAge(15 * 60)
                     .build();
 
-            ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", newRefreshToken)
+            ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", Objects.requireNonNull(newRefreshToken))
                     .httpOnly(true)
                     .secure(true)
                     .path("/auth/refresh") // 🔥 more restricted than "/"
