@@ -1,16 +1,5 @@
 package com.job_recommender_system.auth_server.services;
 
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
-
 import com.job_recommender_system.auth_server.dto.FastAPICreateRequest;
 import com.job_recommender_system.auth_server.dto.LoginRequest;
 import com.job_recommender_system.auth_server.dto.RegisterRequest;
@@ -19,8 +8,17 @@ import com.job_recommender_system.auth_server.models.User;
 import com.job_recommender_system.auth_server.repositories.RefreshTokenRepository;
 import com.job_recommender_system.auth_server.repositories.UserRepository;
 import com.job_recommender_system.auth_server.utils.TokenHelper;
-
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
 @RequiredArgsConstructor
 @Service
@@ -117,8 +115,7 @@ public class AuthService {
             redisService.addToBlacklist(accessToken, ttl);
 
             // Revoke refresh token in database
-            List<RefreshToken> refreshTokenList = refreshTokenRepository.findByUser_UidAndRevokedFalse(userId)
-                    .orElse(List.of());
+            List<RefreshToken> refreshTokenList = refreshTokenRepository.findByUser_UidAndRevokedFalse(userId);
             refreshTokenList.forEach(token -> {
                 token.setRevoked(true);
                 refreshTokenRepository.save(token);

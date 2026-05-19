@@ -1,8 +1,17 @@
 package com.job_recommender_system.auth_server.config;
 
-import java.util.Date;
-import java.util.Objects;
-
+import com.job_recommender_system.auth_server.models.RefreshToken;
+import com.job_recommender_system.auth_server.models.User;
+import com.job_recommender_system.auth_server.repositories.RefreshTokenRepository;
+import com.job_recommender_system.auth_server.repositories.UserRepository;
+import com.job_recommender_system.auth_server.security.APIKeyFilter;
+import com.job_recommender_system.auth_server.security.JwtAuthFilter;
+import com.job_recommender_system.auth_server.security.RateLimitingFilter;
+import com.job_recommender_system.auth_server.services.JwtService;
+import com.job_recommender_system.auth_server.services.UserService;
+import com.job_recommender_system.auth_server.utils.TokenHelper;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,19 +32,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
 
-import com.job_recommender_system.auth_server.models.RefreshToken;
-import com.job_recommender_system.auth_server.models.User;
-import com.job_recommender_system.auth_server.repositories.RefreshTokenRepository;
-import com.job_recommender_system.auth_server.repositories.UserRepository;
-import com.job_recommender_system.auth_server.security.APIKeyFilter;
-import com.job_recommender_system.auth_server.security.JwtAuthFilter;
-import com.job_recommender_system.auth_server.security.RateLimitingFilter;
-import com.job_recommender_system.auth_server.services.JwtService;
-import com.job_recommender_system.auth_server.services.UserService;
-import com.job_recommender_system.auth_server.utils.TokenHelper;
-
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
+import java.util.Date;
+import java.util.Objects;
 
 @RequiredArgsConstructor
 @Configuration
@@ -90,6 +88,8 @@ public class SecurityConfig {
                             User user = userRepository.findByEmail(email)
                                     .orElseThrow(() -> new RuntimeException("User not found"));
 
+                            logger.info("OAuth2 login successful for user: {}", user.getEmail());
+
                             // Generate access token
                             String accessToken = jwtService.generateAccessToken(user);
                             String refreshTokenValue = jwtService.generateRefreshToken(user);
@@ -134,7 +134,7 @@ public class SecurityConfig {
                             res.sendRedirect(reactDomain); // Redirect to frontend after successful login. Adjust as
                                                            // needed for your frontend URL and routing.
                         })
-                        .failureUrl("/auth/oauth2/failure") // Redirect after failed OAuth2 login
+                        .failureUrl("http://localhost:3000/error") // Redirect after failed OAuth2 login, change this to client URL
                 )
                 .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class) // Add rate limiting
                                                                                                  // filter before JWT
