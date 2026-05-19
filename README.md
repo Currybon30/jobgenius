@@ -1,2 +1,3 @@
-# job_recommender_system
-Personal project
+# JobGenius - A Job Recommender System
+
+In Progress...
