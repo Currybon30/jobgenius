@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+:root {
+  --page-bg: #e6effc;
+}
+
+body {
+  background: var(--page-bg);
+}
+
+.footer {
+  background: var(--page-bg);
+  padding: 1rem;
+  text-align: center;
+  margin-top: auto;
+}

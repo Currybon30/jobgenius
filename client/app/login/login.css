@@ -13,13 +13,16 @@ body,
   min-height: 100%;
 }
 
-.register-container {
-  min-height: 100vh;
+.login-container {
+  margin-top: 75px !important;
+  margin-bottom: 75px !important;
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  background: #e6effc;
+  --page-bg: #e6effc;
+  background: var(--page-bg);
   font-family: "Inter", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
@@ -41,15 +44,9 @@ body,
   letter-spacing: 0.2px;
 }
 
-.register-form {
+.login-form {
   display: grid;
   gap: 1rem;
-}
-
-.name-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.8rem;
 }
 
 .input-field {
@@ -89,8 +86,8 @@ body,
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
-.input-field input:focus + label,
-.input-field input:valid + label {
+.input-field input:focus+label,
+.input-field input:valid+label {
   top: 0;
   transform: translateY(-50%);
   font-size: 0.76rem;
@@ -107,7 +104,7 @@ body,
   font-size: 0.9rem;
 }
 
-.register-form button {
+.login-form button:not(.social-login-btn) {
   width: 100%;
   height: 50px;
   border: none;
@@ -121,33 +118,109 @@ body,
   transition: background-color 0.2s ease, transform 0.15s ease;
 }
 
-.register-form button:hover {
+.login-form button:not(.social-login-btn):hover {
   background: #1d4ed8;
   transform: translateY(-1px);
 }
 
-.register-form button:active {
+.login-form button:not(.social-login-btn):active {
   transform: translateY(0);
 }
 
-.register-form-bottom {
+.forgot-password-text {
+  margin: -0.35rem 0 -0.15rem;
+  justify-self: end;
+}
+
+.forgot-password-link {
+  color: #64748b;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.forgot-password-link.is-disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  pointer-events: auto;
+}
+
+.third-app-section {
+  margin-top: 0;
+}
+
+.third-app-text {
+  margin: 0 0 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-size: 0.92rem;
+  color: #64748b;
+}
+
+.third-app-text::before,
+.third-app-text::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #94a3b8;
+}
+
+.social-login-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+}
+
+.social-login-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  width: 100%;
+  height: 50px;
+  border: 1px solid #000000;
+  border-radius: 12px;
+  background: transparent;
+  color: #0f172a;
+  font-size: 0.98rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.social-login-btn img {
+  width: 16px;
+  height: 16px;
+}
+
+.social-login-btn:hover {
+  background: transparent;
+  transform: translateY(-1px);
+}
+
+.social-login-btn:active {
+  transform: translateY(0);
+}
+
+.login-form-bottom {
   margin-top: 0.9rem;
   text-align: center;
 }
 
-.login-link {
+.register-link {
   margin: 0;
   font-size: 0.93rem;
   color: #475569;
 }
 
-.login-link a {
+.register-link a {
   color: #2563eb;
   font-weight: 600;
   text-decoration: none;
 }
 
-.login-link a:hover {
+.register-link a:hover {
   text-decoration: underline;
 }
 
@@ -164,10 +237,5 @@ body,
   .input-field input {
     height: 48px;
     font-size: 0.95rem;
-  }
-
-  .name-row {
-    grid-template-columns: 1fr;
-    gap: 1rem;
   }
 }
