@@ -4,6 +4,8 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from app.models import user
+
 
 class PlanEnum(str, Enum):
     FREE = "FREE"
@@ -13,11 +15,11 @@ class PlanEnum(str, Enum):
 # 🔹 Response (what API returns)
 class UserResponse(BaseModel):
     uid: int
-    plan: PlanEnum
+    plan: str
     plan_expiry: Optional[datetime] = None
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 # 🔹 Create (if needed)

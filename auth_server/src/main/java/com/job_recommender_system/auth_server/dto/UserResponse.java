@@ -5,6 +5,7 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public class FastAPICreateRequest {
-    private Long uid;
+public class UserResponse {
+    private String name;
+    private String email;
 }

@@ -16,6 +16,12 @@ router = APIRouter(tags=["users"])
 
 logger = logging.getLogger(__name__)
 
+@router.get("/api/users/me", response_model=UserResponse)
+def get_current_user_info(current_user: Annotated[User, Depends(get_current_user)]):
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+    return current_user
 
 # Query user info by user_id, only accessible by the user themselves
 @router.get("/api/users/{user_id}", response_model=UserResponse)
@@ -31,14 +37,6 @@ def get_user_info(user_id: int, current_user: Annotated[User, Depends(get_curren
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return user
-
-
-@router.get("/api/users/me", response_model=UserResponse)
-def get_current_user_info(current_user: Annotated[User, Depends(get_current_user)]):
-    if not current_user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
-    return current_user
 
 
 @router.post("/internal/users/add", response_model=UserResponse)

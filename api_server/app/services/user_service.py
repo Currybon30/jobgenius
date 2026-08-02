@@ -4,7 +4,7 @@ from datetime import datetime
 from app.auth.dependencies import get_current_user_id
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.user import UserPlanUpdate
+from app.schemas.user import UserPlanUpdate, UserResponse
 from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -29,6 +29,7 @@ def add_user_to_db(user_id: int, db: Session = Depends(get_db)):
 def get_current_user(db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
     user = get_user_by_id(db, user_id)
     if not user:
+        logger.warning(f"User with ID {user_id} not found")
         return None
     return user
 

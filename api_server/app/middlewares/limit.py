@@ -18,22 +18,25 @@ async def rate_limit_middleware(request: Request, call_next):
     if (request.url.path.startswith("/internal/")) or (request.url.path == "/health"):
         return await call_next(request)
 
+    redis_client = get_redis_client()
+
     access_token = request.cookies.get("access_token")
+
     if access_token:
         try:
             payload = decode_jwt(access_token)
             if payload.get("user_id") is not None:
-                return await call_next(request)
+                response = await call_next(request)
+            return response
         except HTTPException:
             pass
 
     ip = request.headers.get("x-forwarded-for", request.client.host)
     ip = ip.split(",")[0].strip()
-    redis_client = get_redis_client()
-    guest_id = request.cookies.get("guest_id") or str(uuid.uuid4())
+    anonymous_uuid = request.cookies.get("anonymous_uuid")
 
     # ---- 1. Rate limit (per minute) ----
-    rate_key = f"rate:{ip}"
+    rate_key = f"rate:{anonymous_uuid + '_' + ip}"
     rate = await redis_client.get(rate_key)
 
     if rate is None:
@@ -46,28 +49,16 @@ async def rate_limit_middleware(request: Request, call_next):
             status_code=429, detail="Too many requests. Please try again later.")
 
     # ---- 2. Monthly quota check (before request work) ----
-    usage_key = f"usage:{guest_id}"
+    usage_key = f"usage:{anonymous_uuid}"
     usage = await redis_client.get(usage_key)
 
     if usage is None:
         await redis_client.set(usage_key, 1, ex=MONTH_WINDOW)
     else:
         if int(usage) >= MONTH_LIMIT:
-            logger.warning(f"Monthly limit exceeded for Guest ID: {guest_id}")
+            logger.warning(f"Monthly limit exceeded for Anonymous UUID: {anonymous_uuid}")
             raise HTTPException(
                 status_code=403, detail="Monthly usage limit exceeded. Please log in to continue using our features.")
         await redis_client.incr(usage_key)
-
-    # --- 3. Process request and set guest cookie if needed ----
-    response = await call_next(request)
-    if "guest_id" not in request.cookies:
-        response.set_cookie(
-            # secure=True,  # TODO: Uncomment this when we have HTTPS
-            key="guest_id",
-            value=guest_id,
-            max_age=MONTH_WINDOW,
-            httponly=False,  # httponly is used to prevent frontend from accessing the cookie through document.cookie
-            samesite="lax"
-        )
 
     return response

@@ -61,8 +61,9 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
-        configuration.setAllowedOrigins(java.util.List.of("http://localhost:3000")); // Adjust as needed for frontend
-                                                                                     // URL
+        configuration.setAllowedOrigins(java.util.List.of("http://localhost:3000")); // Adjust as needed for
+        // frontend
+        // URL
         configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(java.util.List.of("Content-Type"));
         configuration.setAllowCredentials(true);
@@ -76,72 +77,83 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/api/stripe/webhook").permitAll() // Allow unauthenticated access
-                                                                                        // to auth endpoints and Stripe
-                                                                                        // webhook
+                        // Allow unauthenticated access to auth endpoints and Stripe webhook
+                        .requestMatchers("/auth/**", "/api/stripe/webhook").permitAll()
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.oidcUserService(oidcUserService()))
                         .successHandler((req, res, auth) -> {
-                            OidcUser oidcUser = (OidcUser) auth.getPrincipal();
-                            String email = oidcUser.getEmail();
-                            User user = userRepository.findByEmail(email)
-                                    .orElseThrow(() -> new RuntimeException("User not found"));
+                                OidcUser oidcUser = (OidcUser) auth.getPrincipal();
+                                String email = oidcUser.getEmail();
+                                User user = userRepository.findByEmail(email)
+                                            .orElseThrow(() ->
+                                                new RuntimeException("User not found"));
+                                logger.info("OAuth2 login successful for user: {}",
+                                        user.getEmail());
 
-                            logger.info("OAuth2 login successful for user: {}", user.getEmail());
+                                // Generate access token
+                                String accessToken = jwtService.generateAccessToken(user);
+                                String refreshTokenValue = jwtService.generateRefreshToken(user);
 
-                            // Generate access token
-                            String accessToken = jwtService.generateAccessToken(user);
-                            String refreshTokenValue = jwtService.generateRefreshToken(user);
+                                tokenHelper.refreshTokenList(user);
 
-                            tokenHelper.refreshTokenList(user);
+                                // Generate refresh token
+                                RefreshToken refreshToken = new RefreshToken();
+                                refreshToken.setRefreshToken(refreshTokenValue);
+                                refreshToken.setUser(user);
+                                refreshToken.setRevoked(false);
+                                refreshToken.setCreatedAt(new Date());
+                                refreshToken.setExpiryDate(new Date(System.currentTimeMillis()
+                                        + 1000L * 60 * 60 * 24 * 7)); // 7 days
+                                refreshToken.setSessionStartAt(new Date());
+                                refreshTokenRepository.save(refreshToken);
 
-                            // Generate refresh token
-                            RefreshToken refreshToken = new RefreshToken();
-                            refreshToken.setRefreshToken(refreshTokenValue);
-                            refreshToken.setUser(user);
-                            refreshToken.setRevoked(false);
-                            refreshToken.setCreatedAt(new Date());
-                            refreshToken.setExpiryDate(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 7)); // 7
-                                                                                                                         // days
-                            refreshToken.setSessionStartAt(new Date());
-                            refreshTokenRepository.save(refreshToken);
+                                ResponseCookie cookie = ResponseCookie
+                                        .from("access_token", Objects.requireNonNull(accessToken))
+                                        .httpOnly(true)
+                                        .secure(true)
+                                        .path("/")
+                                        .sameSite("None") // REQUIRED for React cross-origin
+                                        .maxAge(15 * 60)
+                                        .build();
 
-                            ResponseCookie cookie = ResponseCookie
-                                    .from("access_token", Objects.requireNonNull(accessToken))
-                                    .httpOnly(true)
-                                    .secure(true)
-                                    .path("/")
-                                    .sameSite("None") // REQUIRED for React cross-origin
-                                    .maxAge(15 * 60)
-                                    .build();
+                                ResponseCookie refreshCookie = ResponseCookie
+                                        .from("refresh_token", Objects.requireNonNull(refreshTokenValue))
+                                        .httpOnly(true)
+                                        .secure(true)
+                                        .path("/auth/refresh") // Meaning: only send this cookie when the request is made to /auth/refresh endpoint
+                                        .sameSite("None")
+                                        .maxAge(7 * 24 * 60 * 60) // 7 days
+                                        .build();
 
-                            ResponseCookie refreshCookie = ResponseCookie
-                                    .from("refresh_token", Objects.requireNonNull(refreshTokenValue))
-                                    .httpOnly(true)
-                                    .secure(true)
-                                    .path("/auth/refresh") // 🔥 more restricted than "/"
-                                    .sameSite("None")
-                                    .maxAge(7 * 24 * 60 * 60) // 7 days
-                                    .build();
+                                // remove anonymousUuid from cookie
+                                ResponseCookie anonymousUuid = ResponseCookie
+                                        .from("anonymous_uuid", "")
+                                        .httpOnly(true)
+                                        .secure(true)
+                                        .path("/")
+                                        .sameSite("None") // REQUIRED for React cross-origin
+                                        .maxAge(0)
+                                        .build();
 
-                            // Return JSON response
-                            res.setStatus(HttpServletResponse.SC_OK);
-                            res.setContentType("application/json");
-                            res.setCharacterEncoding("UTF-8");
-                            res.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-                            res.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
-                            res.sendRedirect(reactDomain); // Redirect to frontend after successful login. Adjust as
-                                                           // needed for your frontend URL and routing.
-                        })
-                        .failureUrl("http://localhost:3000/error") // Redirect after failed OAuth2 login, change this to client URL
+                                // Return JSON response
+                                res.setStatus(HttpServletResponse.SC_OK);
+                                res.setContentType("application/json");
+                                res.setCharacterEncoding("UTF-8");
+                                res.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+                                res.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+                                res.addHeader(HttpHeaders.SET_COOKIE,
+                                        anonymousUuid.toString());
+                        
+                                res.sendRedirect(reactDomain); 
+                                })
+                                .failureUrl("http://localhost:3000/error") // Redirect after failed
+                        // OAuth2 login, change this
+                        // to client URL
                 )
-                .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class) // Add rate limiting
-                                                                                                 // filter before JWT
-                                                                                                 // authentication
-                                                                                                 // filter
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(rateLimitingFilter, APIKeyFilter.class)
+                .addFilterAfter(jwtAuthFilter, RateLimitingFilter.class)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(
@@ -164,8 +176,7 @@ public class SecurityConfig {
                 // can be handled on the client side by simply deleting the JWT token.
                 .logout(logout -> logout.disable())
 
-                .cors(cors -> cors.configurationSource(corsConfigurationSource())); // Enable CORS with the defined
-                                                                                    // configuration
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())); // Enable CORS with the defined configuration
         return http.build();
     }
 

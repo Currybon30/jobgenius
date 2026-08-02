@@ -1,8 +1,14 @@
 package com.job_recommender_system.auth_server.security;
 
-import java.io.IOException;
-import java.util.List;
-
+import com.job_recommender_system.auth_server.services.JwtService;
+import com.job_recommender_system.auth_server.services.RedisService;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -12,14 +18,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.job_recommender_system.auth_server.services.JwtService;
-import com.job_recommender_system.auth_server.services.RedisService;
-
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
+import java.io.IOException;
+import java.util.List;
 
 @RequiredArgsConstructor
 @Component
@@ -71,8 +71,27 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         username, null, authorities);
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
             }
-        } catch (Exception e) {
+        } 
+        catch (ExpiredJwtException e) {
+            logger.warn("JWT token has expired: {}", e.getMessage());
+            response.setStatus(401);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"error\": \"ACCESS_TOKEN_EXPIRED\"}");
+            return;
+        }
+        catch (JwtException e) {
             logger.error("JWT validation failed: {}", e.getMessage());
+            response.setStatus(401);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"error\": \"INVALID_ACCESS_TOKEN\"}");
+            return;
+        }
+        catch (Exception e) {
+            logger.error("Unexpected error during JWT validation: {}", e.getMessage());
+            response.setStatus(500);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"error\": \"INTERNAL_SERVER_ERROR\"}");
+            return;
         }
         filterChain.doFilter(request, response);
     }
