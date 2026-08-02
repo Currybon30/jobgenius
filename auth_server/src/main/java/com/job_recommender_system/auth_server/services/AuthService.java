@@ -103,7 +103,7 @@ public class AuthService {
                     "refreshToken", refreshTokenStr);
             return tokens;
         } catch (Exception e) {
-            throw new RuntimeException("Error logging in user: " + e.getMessage());
+            throw new RuntimeException(e.getMessage());
         }
     }
 

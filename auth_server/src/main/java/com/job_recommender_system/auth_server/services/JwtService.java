@@ -100,6 +100,7 @@ public class JwtService {
                 .compact();
     }
 
+    @Transactional // For atomicity, ensure that the refresh token is revoked and the new token is generated in a single transaction
     public Map<String, String> refreshAccessToken(String refreshToken, User user) {
         RefreshToken token = refreshTokenRepository.findByRefreshToken(refreshToken)
                 .orElseThrow(() -> new RuntimeException("Invalid refresh token"));
