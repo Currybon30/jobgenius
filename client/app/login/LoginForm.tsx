@@ -4,16 +4,17 @@ import axios from "axios";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import { handleGoogleLogin } from "@/auth/oauth";
 import { handleLogin } from "@/auth/api";
 import { LoginRequest } from "@/auth/types";
+import { useAuth } from "@/contexts/AuthContext";
 
-import "react-toastify/dist/ReactToastify.css";
 import "./login.css";
 
 export function LoginForm() {
   const router = useRouter();
+  const { refreshAuth } = useAuth();
   const controllerRef = useRef<AbortController | null>(null);
 
   const [email, setEmail] = useState("");
@@ -34,10 +35,6 @@ export function LoginForm() {
     const controller = new AbortController();
     controllerRef.current = controller;
 
-    controller.signal.addEventListener("abort", () => {
-      toast.error("Login failed: Request was aborted by user");
-    });
-
     try {
       const loginRequest: LoginRequest = {
         email,
@@ -46,22 +43,24 @@ export function LoginForm() {
 
       await handleLogin(loginRequest, { signal: controller.signal, withCredentials: true });
 
+      if (controllerRef.current !== controller) return;
+
+      await refreshAuth();
       toast.success("Login successful");
 
       router.push("/");
     } catch (error: unknown) {
+      if (controller.signal.aborted) return;
+
       if (axios.isAxiosError(error)) {
-        if (error.name === "CanceledError") {
-          toast.error("Login failed: Request was aborted by user");
-        } else {
-          toast.error(
-            "Login failed: " + (error.response?.data?.message || error.message),
-          );
-        }
+        toast.error("Invalid email or password. Please try again.");
       } else if (error instanceof Error) {
         toast.error("Login failed: " + error.message);
-      } else {
-        toast.error("Login failed");
+      }
+    } finally {
+      // Only clear if we still own the ref (prevents wiping a newer request)
+      if (controllerRef.current === controller) {
+        controllerRef.current = null;
       }
     }
   };
@@ -143,7 +142,6 @@ export function LoginForm() {
           Do not have an account? <Link href="/register">Register</Link>
         </p>
       </div>
-      <ToastContainer position="top-right" autoClose={5000} />
     </div>
   );
 }

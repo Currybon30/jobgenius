@@ -4,8 +4,7 @@ import axios from "axios";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify";
 import "./register.css";
 import { handleRegister } from "@/auth/api";
 import { RegisterRequest } from "@/auth/types";
@@ -156,7 +155,6 @@ export function RegisterForm() {
           Already have an account? <Link href="/login">Login</Link>
         </p>
       </div>
-      <ToastContainer position="top-right" autoClose={5000} />
     </div>
   );
 }

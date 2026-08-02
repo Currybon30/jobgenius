@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { NavBar } from "@/components/navBar";
+import { Providers } from "./providers";
 import "./globals.css";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -25,16 +28,18 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen flex flex-col">
-        <NavBar />
-        <main className="flex-1 flex items-center justify-center">
-          {children}
-        </main>
+        <Providers>
+          <NavBar />
+          <main className="flex-1 flex items-center justify-center">
+            {children}
+          </main>
 
-        <hr />
-        <footer className="footer">
-          &copy; 2026 - {new Date().getFullYear()} JobGenius. All rights
-          reserved.
-        </footer>
+          <hr />
+          <footer className="footer">
+            &copy; 2026 - {new Date().getFullYear()} JobGenius. All rights reserved.
+          </footer>
+          <ToastContainer position="top-right" autoClose={2000} hideProgressBar={true} style={{ marginTop: "60px" }}/>
+        </Providers>
       </body>
     </html>
   );

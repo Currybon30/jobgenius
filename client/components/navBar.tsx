@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
-import { getCurrentUser, handleLogout } from "@/auth/api";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { handleLogout } from "@/auth/api";
+import { clearAuthSession, useAuth } from "@/contexts/AuthContext";
+import { getUserPlan } from "@/services/userServices";
 import "./navBar.css";
+import { toast } from "react-toastify";
 
 const NAV_LINKS = [
   { label: "Home", href: "/" },
@@ -19,8 +22,6 @@ const PROFILE_LINKS = [
   { label: "Settings", href: "/settings" },
   { label: "Help", href: "/help" },
 ] as const;
-
-const HIDDEN_ROUTES = ["/login", "/register"] as const;
 
 function ProfileIcon() {
   return (
@@ -38,35 +39,56 @@ function ProfileIcon() {
   );
 }
 
+function AuthActionSkeleton() {
+  return (
+    <div
+      className="navbar-auth-skeleton"
+      aria-hidden="true"
+      aria-busy="true"
+    />
+  );
+}
+
 export function NavBar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const hideNav = HIDDEN_ROUTES.some((route) => pathname === route);
+  const { status, refreshAuth } = useAuth();
+  const [userPlanState, setUserPlanState] = useState("");
+  const planFetchedRef = useRef(false);
 
-  const checkAuth = useCallback(async () => {
+  const checkUserPlan = useCallback(async () => {
     try {
-      await getCurrentUser();
-      setIsLoggedIn(true);
+      setUserPlanState(await getUserPlan());
     } catch {
-      setIsLoggedIn(false);
+      setUserPlanState("FREE");
     }
   }, []);
 
   useEffect(() => {
-    if (hideNav) return;
-    checkAuth();
-  }, [checkAuth, hideNav]);
+    if (status !== "authenticated") {
+      setUserPlanState("");
+      planFetchedRef.current = false;
+      return;
+    }
+    if (planFetchedRef.current) return;
+
+    planFetchedRef.current = true;
+    void checkUserPlan();
+  }, [status, checkUserPlan]);
 
   const onLogout = async () => {
     try {
       await handleLogout();
-      setIsLoggedIn(false);
-      router.push("/login");
-      router.refresh();
+      toast.success("Logged out successfully");
     } catch {
-      setIsLoggedIn(false);
-      router.push("/login");
+      /* still clear local session state */
+    } finally {
+      setUserPlanState("");
+      planFetchedRef.current = false;
+      clearAuthSession();
+      await refreshAuth();
+      router.push("/");
+      router.refresh();
     }
   };
 
@@ -75,7 +97,70 @@ export function NavBar() {
     return pathname === href || pathname.startsWith(`${href}/`);
   };
 
-  if (hideNav) return null;
+  const renderPlanBanner = () => {
+    if (status !== "authenticated") return null;
+
+    return userPlanState === "FREE" ? (
+      <button
+        type="button"
+        className="plan-banner is-free"
+        // onClick={() => router.push("/upgrade")}
+      >
+        Upgrade ★
+      </button>
+    ) : (
+      <p className="plan-banner is-premium">
+        {userPlanState}
+      </p>
+    );
+  };
+
+  const renderAuthAction = () => {
+    if (status === "loading") {
+      return <AuthActionSkeleton />;
+    }
+
+    if (status === "authenticated") {
+      return (
+        <div className="profile-menu">
+          <button
+            type="button"
+            className="profile-trigger"
+            aria-label="Account menu"
+            aria-haspopup="true"
+          >
+            <ProfileIcon />
+          </button>
+          <div className="profile-dropdown" role="menu">
+            {PROFILE_LINKS.map(({ label, href }) => (
+              <Link
+                key={href}
+                href={href}
+                className="profile-dropdown-item"
+                role="menuitem"
+              >
+                {label}
+              </Link>
+            ))}
+            <button
+              type="button"
+              className="profile-dropdown-item logout"
+              role="menuitem"
+              onClick={onLogout}
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <Link href="/login" className="navbar-login-btn">
+        Log in
+      </Link>
+    );
+  };
 
   return (
     <header className="navbar">
@@ -96,43 +181,11 @@ export function NavBar() {
           ))}
         </nav>
 
-        <div className="navbar-actions">
-          {isLoggedIn ? (
-            <div className="profile-menu">
-              <button
-                type="button"
-                className="profile-trigger"
-                aria-label="Account menu"
-                aria-haspopup="true"
-              >
-                <ProfileIcon />
-              </button>
-              <div className="profile-dropdown" role="menu">
-                {PROFILE_LINKS.map(({ label, href }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    className="profile-dropdown-item"
-                    role="menuitem"
-                  >
-                    {label}
-                  </Link>
-                ))}
-                <button
-                  type="button"
-                  className="profile-dropdown-item logout"
-                  role="menuitem"
-                  onClick={onLogout}
-                >
-                  Logout
-                </button>
-              </div>
-            </div>
-          ) : (
-            <Link href="/login" className="navbar-login-btn">
-              Log in
-            </Link>
-          )}
+        <div className="navbar-end">
+          {renderPlanBanner()}
+          <div className="navbar-actions">
+            {renderAuthAction()}
+          </div>
         </div>
       </div>
     </header>

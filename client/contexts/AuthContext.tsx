@@ -1,0 +1,119 @@
+"use client";
+
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { getCurrentUser } from "@/services/userServices";
+
+export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
+
+const AUTH_STATUS_STORAGE_KEY = "jobgenius_auth_status";
+
+export type AuthContextValue = {
+  status: AuthStatus;
+  refreshAuth: () => Promise<void>; 
+};
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+function readStoredStatus(): AuthStatus | null {
+  if (typeof window === "undefined") return null;
+  const stored = sessionStorage.getItem(AUTH_STATUS_STORAGE_KEY);
+  if (stored === "authenticated" || stored === "unauthenticated") {
+    return stored;
+  }
+  return null;
+}
+
+function persistStatus(status: AuthStatus) {
+  if (typeof window === "undefined" || status === "loading") return;
+  sessionStorage.setItem(AUTH_STATUS_STORAGE_KEY, status);
+}
+
+function clearStoredStatus() {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(AUTH_STATUS_STORAGE_KEY);
+}
+
+async function resolveAuthStatus(): Promise<AuthStatus> {
+  try {
+    const user = await getCurrentUser();
+    return user ? "authenticated" : "unauthenticated";
+  } catch {
+    return "unauthenticated";
+  }
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  // Always "loading" on first render so SSR and client markup match (no sessionStorage in useState).
+  const [status, setStatus] = useState<AuthStatus>("loading"); // status: "loading" | "authenticated" | "unauthenticated"
+  const initialFetchDoneRef = useRef(false);
+  const fetchInFlightRef = useRef<Promise<AuthStatus> | null>(null);
+
+  const refreshAuth = useCallback(async () => {
+    if (fetchInFlightRef.current) {
+      await fetchInFlightRef.current;
+      return;
+    }
+
+    const run = (async () => {
+      const next = await resolveAuthStatus();
+      setStatus(next);
+      persistStatus(next);
+      return next;
+    })();
+
+    fetchInFlightRef.current = run;
+    try {
+      await run;
+    } finally {
+      fetchInFlightRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (initialFetchDoneRef.current) return;
+    initialFetchDoneRef.current = true;
+
+    const stored = readStoredStatus();
+    if (stored) {
+      setStatus(stored);
+      void refreshAuth(); // void is used to avoid the warning of async function in useEffect
+      return;
+    }
+
+    void (async () => {
+      const next = await resolveAuthStatus();
+      setStatus(next);
+      persistStatus(next);
+    })();
+  }, [refreshAuth]);
+
+  const value = useMemo<AuthContextValue>(
+    () => ({ status, refreshAuth }),
+    [status, refreshAuth],
+  );
+
+  return (
+    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  );
+}
+
+export function useAuth(): AuthContextValue {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+}
+
+export function clearAuthSession(): void {
+  clearStoredStatus();
+}
