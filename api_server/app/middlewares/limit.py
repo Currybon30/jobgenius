@@ -26,14 +26,16 @@ async def rate_limit_middleware(request: Request, call_next):
         try:
             payload = decode_jwt(access_token)
             if payload.get("user_id") is not None:
-                response = await call_next(request)
-            return response
+                return await call_next(request)
         except HTTPException:
             pass
 
     ip = request.headers.get("x-forwarded-for", request.client.host)
     ip = ip.split(",")[0].strip()
     anonymous_uuid = request.cookies.get("anonymous_uuid")
+
+    # Convert to string anonymous_uuid
+    anonymous_uuid = str(anonymous_uuid)
 
     # ---- 1. Rate limit (per minute) ----
     rate_key = f"rate:{anonymous_uuid + '_' + ip}"
@@ -56,9 +58,11 @@ async def rate_limit_middleware(request: Request, call_next):
         await redis_client.set(usage_key, 1, ex=MONTH_WINDOW)
     else:
         if int(usage) >= MONTH_LIMIT:
-            logger.warning(f"Monthly limit exceeded for Anonymous UUID: {anonymous_uuid}")
+            logger.warning(
+                f"Monthly limit exceeded for Anonymous UUID: {anonymous_uuid}")
             raise HTTPException(
                 status_code=403, detail="Monthly usage limit exceeded. Please log in to continue using our features.")
         await redis_client.incr(usage_key)
 
+    response = await call_next(request)
     return response
