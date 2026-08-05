@@ -1,3 +1,9 @@
+from contextlib import asynccontextmanager
+import logging
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 from app.core.config import settings
 from app.core.logging_config import setup_logging
 from app.db.base import Base
@@ -8,10 +14,9 @@ from app.middlewares.logging import logging_middleware
 from app.middlewares.timing import timing_middleware
 from app.routes.resume_router import router as resume_router
 from app.routes.user_router import router as user_router
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
 setup_logging()
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG)
 
@@ -28,15 +33,22 @@ app.include_router(user_router)
 app.include_router(resume_router)
 
 
-@app.on_event("startup")
-async def on_startup():
-    await init_redis()
-    Base.metadata.create_all(bind=engine)
-
-
-@app.on_event("shutdown")
-async def on_shutdown():
-    await close_redis()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+    # STARTUP LOGIC
+        logger.info("Initializing application...")
+        await init_redis()
+        Base.metadata.create_all(bind=engine)
+        
+        yield
+        
+        # SHUTDOWN LOGIC
+        logger.info("Shutting down application...")
+        await close_redis()
+    except Exception as e:
+        logger.error(f"Error during application lifespan: {e}")
+        raise e
 
 
 @app.get("/health")
