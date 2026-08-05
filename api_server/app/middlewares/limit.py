@@ -30,7 +30,7 @@ async def rate_limit_middleware(request: Request, call_next):
         except HTTPException:
             pass
 
-    ip = request.headers.get("x-forwarded-for", request.client.host)
+    ip = request.headers.get("x-forwarded-for", request.client.host) # type: ignore
     ip = ip.split(",")[0].strip()
     anonymous_uuid = request.cookies.get("anonymous_uuid")
 
@@ -62,7 +62,16 @@ async def rate_limit_middleware(request: Request, call_next):
                 f"Monthly limit exceeded for Anonymous UUID: {anonymous_uuid}")
             raise HTTPException(
                 status_code=403, detail="Monthly usage limit exceeded. Please log in to continue using our features.")
-        await redis_client.incr(usage_key)
 
     response = await call_next(request)
     return response
+
+def increment_monthly_usage(anonymous_uuid: str):
+    redis_client = get_redis_client()
+    usage_key = f"usage:{anonymous_uuid}"
+    usage = redis_client.get(usage_key)
+
+    if usage is None:
+        redis_client.incr(usage_key)
+    else:
+        raise KeyError(f"Usage key '{usage_key}' is not found in Redis")
