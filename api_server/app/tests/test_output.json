@@ -1,0 +1,45 @@
+{
+    "resume_text": "I am a software engineer with 5 years of experience in developing web applications using React, Node.js, and MongoDB. I have a strong understanding of the software development lifecycle and am able to work independently and as part of a team.",
+    "jd_text": "We are looking for a software engineer with 5 years of experience in developing web applications using React, Node.js, and MongoDB.",
+    "user_goal": "I am looking for a software engineer with 5 years of experience in developing web applications using React, Node.js, and MongoDB.",
+    "intent": {
+      "target_role": "Software Engineer",
+      "seniority_level": "Mid",
+      "industry": "tech",
+      "priority_goals": [
+        "Highlight specific projects and achievements in web application development using React, Node.js, and MongoDB.",
+        "Provide measurable results or metrics related to previous work experience.",
+        "Emphasize teamwork and collaboration experiences.",
+        "Mention any leadership roles or mentorship activities.",
+        "Include relevant certifications or training in modern software development practices."
+      ],
+      "focus_areas": ["experience", "skills"],
+      "top_keywords": [
+        "React",
+        "Node.js",
+        "MongoDB",
+        "Web applications",
+        "Software development lifecycle",
+        "Independent work",
+        "Team collaboration"
+      ],
+      "optimization_strategy": {
+        "must_have": ["React", "Node.js", "MongoDB", "web applications"],
+        "nice_to_have": ["Agile methodology", "Git", "testing frameworks"],
+        "avoid": ["generic wording", "no metrics", "missing sections"]
+      }
+    },
+    "feedback": {
+      "summary": "Resume is directionally aligned with a mid-level Software Engineer role focused on React, Node.js, and MongoDB, but lacks structured sections and quantified achievements, which weakens ATS fit.",
+      "skills_feedback": "Core stack (React, Node.js, MongoDB) is present in prose, but there is no dedicated skills section. Adding explicit skill bullets and related tools (Git, testing frameworks) would strengthen the resume. Agile methodology is beneficial but not strictly necessary given current focus areas.",
+      "experience_feedback": "The experience content is too general and lacks specific projects or achievements with measurable results. More detail on roles, responsibilities, and outcomes would improve credibility.",
+      "structure_feedback": "There are no clear summary, skills, or metrics sections, which hurts ATS fit (about 54.41%). Formatting itself is solid (100%), but missing necessary sections reduces readability and impact.",
+      "simple_suggestions": [
+        "Add a clear summary that highlights your key strengths and role.",
+        "Include specific projects or achievements using React, Node.js, and MongoDB.",
+        "Mention leadership or mentorship activities if applicable.",
+        "Add a skills section with tools such as Git and testing frameworks.",
+        "Add quantified metrics where possible (impact, delivery, performance improvements)."
+      ]
+    }
+  }
