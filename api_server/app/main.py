@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
     try:
         # STARTUP LOGIC
         logger.info("Initializing application...")
-        await init_redis()
+        init_redis()
         Base.metadata.create_all(bind=engine)
 
         yield

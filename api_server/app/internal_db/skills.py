@@ -15,6 +15,10 @@ IT_SKILL_NORMALIZATION = {
     "azure": ["azure"],
     "linux": ["linux"],
     "git": ["git"],
+    "mongodb": ["mongodb"],
+    "mysql": ["mysql"],
+    "postgresql": ["postgresql"],
+    "nosql": ["nosql"]
 }
 
 

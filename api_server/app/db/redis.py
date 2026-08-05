@@ -4,9 +4,9 @@ from app.core.config import settings
 redis_client: redis.Redis | None = None
 
 
-async def init_redis():
+def init_redis():
     global redis_client
-    redis_client = await redis.Redis(
+    redis_client = redis.Redis(
         host=settings.REDIS_HOST,
         port=settings.REDIS_PORT,
         decode_responses=True

@@ -1,0 +1,78 @@
+{
+  "resume_text": "I am a software engineer with 5 years of experience in developing web applications using React, Node.js, and MongoDB. I have a strong understanding of the software development lifecycle and am able to work independently and as part of a team.",
+  "jd_text": "We are looking for a software engineer with 5 years of experience in developing web applications using React, Node.js, and MongoDB.",
+  "user_goal": "I am looking for a software engineer with 5 years of experience in developing web applications using React, Node.js, and MongoDB.",
+  "intent": {
+    "target_role": "Software Engineer",
+    "seniority_level": "Mid",
+    "industry": "tech",
+    "priority_goals": [
+      "Highlight specific projects and achievements in web application development",
+      "Quantify results where possible (e.g., increased efficiency, user base growth)",
+      "Emphasize teamwork experience and leadership roles if any",
+      "Provide examples of how you have applied React, Node.js, and MongoDB in real-world scenarios",
+      "Demonstrate understanding of the software development lifecycle"
+    ],
+    "focus_areas": ["projects", "skills"],
+    "top_keywords": [
+      "React",
+      "Node.js",
+      "MongoDB",
+      "web applications",
+      "software development lifecycle",
+      "independent work",
+      "teamwork",
+      "5 years of experience"
+    ],
+    "optimization_strategy": {
+      "must_have": ["React", "Node.js", "MongoDB"],
+      "nice_to_have": ["specific projects", "achievements", "team leadership roles"],
+      "avoid": ["generic wording", "lack of metrics"]
+    }
+  },
+  "analyzer": {
+    "resume_text": "I am a software engineer with 5 years of experience in developing web applications using React, Node.js, and MongoDB. I have a strong understanding of the software development lifecycle and am able to work independently and as part of a team.",
+    "jd_text": "We are looking for a software engineer with 5 years of experience in developing web applications using React, Node.js, and MongoDB.",
+    "sections": {},
+    "years_exp": 0,
+    "has_summary": false,
+    "has_skills": false,
+    "has_experience": false,
+    "has_projects": false,
+    "has_education": false,
+    "emails": [],
+    "phone_numbers": [],
+    "has_metrics": false,
+    "jd_provided": true,
+    "hard_skills": ["react", "javascript", "nodejs"],
+    "soft_skills": [],
+    "missing_hard_skills": [],
+    "matching_hard_skills_score": 1.0,
+    "missing_soft_skills": [],
+    "matching_soft_skills_score": 0.1
+  },
+  "ats": {
+    "resume_score": 0.166,
+    "section_score": 0.03,
+    "experience_projects_score": 0.05,
+    "skills_quality_score": 0.4,
+    "summary_quality_score": 0.35,
+    "formatting_score": 1.0,
+    "ats_score": 54.41,
+    "hard_skills_score": 100.0,
+    "soft_skills_score": 10.0
+  },
+  "feedback": {
+    "summary": "The resume has a relevant skill set but lacks depth in the experience section. The overall score is low due to missing key sections and insufficient detail.",
+    "skills_feedback": "Skills are mentioned clearly with React, Node.js, and MongoDB, which match the job description. However, there's no mention of specific projects or achievements that could provide more context on how these skills have been applied in real-world scenarios.",
+    "experience_feedback": "The experience section is brief and lacks detail. It would be beneficial to include specific projects, metrics (e.g., user base growth), and any leadership roles to demonstrate the impact of your work.",
+    "structure_feedback": "There are no sections for a summary or skills, which could provide an overview and highlight key competencies. The lack of a summary makes it harder for recruiters to quickly understand the candidate's value proposition. Formatting is good, but content is lacking in depth.",
+    "simple_suggestions": [
+      "Add a brief summary section that highlights your role as a software engineer with 5 years of experience.",
+      "Include specific projects or achievements related to web application development using React, Node.js, and MongoDB.",
+      "Mention any leadership roles or team contributions to showcase teamwork experience.",
+      "Consider adding a skills section to explicitly list relevant hard and soft skills.",
+      "Provide metrics or results where possible (e.g., increased efficiency, user base growth) to quantify your impact."
+    ]
+  }
+}

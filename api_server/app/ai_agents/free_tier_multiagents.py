@@ -8,7 +8,7 @@ from app.ai_agents.agents.agent3_ats import ats_agent_free_tier
 from app.ai_agents.agents.agent6_finalizer import finalizer_agent_free_tier
 
 
-class GraphState(TypedDict, total=False):
+class GraphState(TypedDict):
     # User input states
     resume_text: str
     jd_text: Optional[str]

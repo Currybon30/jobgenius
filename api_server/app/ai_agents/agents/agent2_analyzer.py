@@ -24,7 +24,6 @@ def analyzer_agent_free_tier(resume_text, industry: str = None, jd_text: str = N
     if jd_text == "" or jd_text is None:
         skills_info = extract_skills_from_text_without_jd(resume_text, industry)
         return {
-            "resume_text": resume_text,
             "sections": sections,
             "years_exp": years_exp,
             "has_summary": has_summary_bool,
@@ -43,7 +42,6 @@ def analyzer_agent_free_tier(resume_text, industry: str = None, jd_text: str = N
         jd_provided = True
         skills_info = extract_skills_from_text_with_jd(resume_text, jd_text, limit=5)
         return {
-            "resume_text": resume_text,
             "jd_text": jd_text,
             "sections": sections,
             "years_exp": years_exp,

@@ -53,6 +53,7 @@ async def rate_limit_middleware(request: Request, call_next):
     # ---- 2. Monthly quota check (before request work) ----
     usage_key = f"usage:{anonymous_uuid}"
     usage = await redis_client.get(usage_key)
+    
 
     if usage is None:
         await redis_client.set(usage_key, 1, ex=MONTH_WINDOW)
@@ -66,12 +67,12 @@ async def rate_limit_middleware(request: Request, call_next):
     response = await call_next(request)
     return response
 
-def increment_monthly_usage(anonymous_uuid: str):
+async def increment_monthly_usage(anonymous_uuid: str):
     redis_client = get_redis_client()
     usage_key = f"usage:{anonymous_uuid}"
-    usage = redis_client.get(usage_key)
+    usage = await redis_client.get(usage_key)
 
-    if usage is None:
-        redis_client.incr(usage_key)
+    if usage is not None:
+        await redis_client.incr(usage_key)
     else:
         raise KeyError(f"Usage key '{usage_key}' is not found in Redis")

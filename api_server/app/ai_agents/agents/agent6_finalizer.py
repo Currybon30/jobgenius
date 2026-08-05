@@ -167,6 +167,7 @@ async def finalizer_agent_free_tier(
         4. Structure and readability (section flags + Necessary Sections / Summary / Formatting scores)
         - Keep suggestions simple, actionable, and few
         - Align light guidance with priority_goals / focus_areas / avoid when useful
+        - If the resume does not have clear headings for sections, do not say something like "You only have 0 years of experience" (If they actually have experience, they will have a section for it). Instead, say something like "You should add a section for your experience".
 
         === OUTPUT FORMAT ===
         Return ONLY valid JSON (no markdown fences):
@@ -188,6 +189,5 @@ async def finalizer_agent_free_tier(
 
     response = await llm_call(prompt)
 
-    logger.info(f"Agent 6: Finalizer agent response: {response}")
 
     return safe_parse(response, "finalizer_agent_free_tier")

@@ -1,11 +1,13 @@
 import logging
+from typing import Annotated
 
-from app.ai_agents.agent1_intent import intent_goal_agent
-from app.ai_agents.agent6_finalizer import resume_feedback_free_tier
-from app.services.resume_analyzer import *
 from fastapi import (APIRouter, Body, Depends, File, Header, HTTPException,
-                     UploadFile, status)
+                     UploadFile, status, Cookie, Form)
 from fastapi.responses import JSONResponse
+
+from app.middlewares.limit import increment_monthly_usage
+from app.ai_agents.free_tier_multiagents import build_free_tier_graph
+from app.services.resume_analyzer import *
 
 logger = logging.getLogger(__name__)
 
@@ -13,126 +15,27 @@ router = APIRouter(tags=["resumes"])
 
 
 @router.post("/api/resume/analyze")
-async def analyze_resume_free_tier(resume_pdf: UploadFile = File(...), jd_text: str = Body(default=""), user_goal: str = Body(default="")):
+async def analyze_resume_free_tier(
+    resume_pdf: Annotated[UploadFile, File(...)], # required
+    jd_text: Annotated[str, Form()] = "", # optional
+    user_goal: Annotated[str, Form()] = "", # optional
+    anonymous_uuid: Annotated[str | None, Cookie()] = None
+):
     try:
+        # agent 2 analyzer
         resume_text = await extract_text_from_resume(resume_pdf)
-        has_jd = bool(jd_text and jd_text.strip())
-        has_goal = bool(user_goal and user_goal.strip())
-
-        if not has_jd and not has_goal:
-            agent1_response = await intent_goal_agent(resume_text)
-
-            # Get industry from agent1_response
-            industry = agent1_response["industry"]
-
-            # extract_skills_from_text_without_jd
-            skills = extract_skills_from_text_without_jd(resume_text, industry)
-
-            # calculate_resume_quality_score_for_free_tier
-            resume_quality_score, necessary_sections_score, metrics_score = calculate_resume_quality_score_for_free_tier(
-                resume_text, False)
-
-            # give the response to agent6_finalizer
-            agent6_response = await resume_feedback_free_tier(resume_text, skills["skills"] + skills["soft_skills"], None, None, resume_quality_score, 0, metrics_score, necessary_sections_score)
-
-            content = {
-                "feedback": agent6_response,
-                "industry": industry,
-                "soft_skills": skills["soft_skills"],
-                "hard_skills": skills["skills"],
-                "matching_skills_score": 0,
-                "missing_skills": [],
-                "resume_quality_score": resume_quality_score,
-                "necessary_sections_score": necessary_sections_score,
-                "metrics_score": metrics_score
-            }
-            return JSONResponse(content=content, status_code=status.HTTP_200_OK)
-
-        elif has_jd and has_goal:
-            agent1_response = await intent_goal_agent(resume_text, jd_text, user_goal)
-
-            industry = agent1_response["industry"]
-
-            # extract_skills_from_text_without_jd
-            skills = extract_skills_from_text_with_jd(resume_text, jd_text)
-
-            # calculate_resume_quality_score_for_free_tier
-            resume_quality_score, necessary_sections_score, metrics_score = calculate_resume_quality_score_for_free_tier(
-                resume_text, True, jd_text)
-
-            # give the response to agent6_finalizer
-            agent6_response = await resume_feedback_free_tier(resume_text, skills["skills"] + skills["soft_skills"], jd_text, skills["missing_skills"], resume_quality_score, skills["matching_skills_score"], metrics_score, necessary_sections_score, user_goal)
-
-            content = {
-                "feedback": agent6_response,
-                "industry": industry,
-                "soft_skills": skills["soft_skills"],
-                "hard_skills": skills["skills"],
-                "matching_skills_score": skills["matching_skills_score"],
-                "missing_skills": skills["missing_skills"],
-                "resume_quality_score": resume_quality_score,
-                "necessary_sections_score": necessary_sections_score,
-                "metrics_score": metrics_score
-            }
-            return JSONResponse(content=content, status_code=status.HTTP_200_OK)
-
-        elif has_jd:
-
-            agent1_response = await intent_goal_agent(resume_text, jd_text)
-
-            industry = agent1_response["industry"]
-
-            # extract_skills_from_text_without_jd
-            skills = extract_skills_from_text_with_jd(resume_text, jd_text)
-
-            # calculate_resume_quality_score_for_free_tier
-            resume_quality_score, necessary_sections_score, metrics_score = calculate_resume_quality_score_for_free_tier(
-                resume_text, True, jd_text)
-
-            # give the response to agent6_finalizer
-            agent6_response = await resume_feedback_free_tier(resume_text, skills["skills"] + skills["soft_skills"], jd_text, skills["missing_skills"], resume_quality_score, skills["matching_skills_score"], metrics_score, necessary_sections_score)
-
-            content = {
-                "feedback": agent6_response,
-                "industry": industry,
-                "soft_skills": skills["soft_skills"],
-                "hard_skills": skills["skills"],
-                "matching_skills_score": skills["matching_skills_score"],
-                "missing_skills": skills["missing_skills"],
-                "resume_quality_score": resume_quality_score,
-                "necessary_sections_score": necessary_sections_score,
-                "metrics_score": metrics_score
-            }
-            return JSONResponse(content=content, status_code=status.HTTP_200_OK)
-
-        elif has_goal:
-            agent1_response = await intent_goal_agent(resume_text, user_goal=user_goal)
-
-            # Get industry from agent1_response
-            industry = agent1_response["industry"]
-
-            # extract_skills_from_text_without_jd
-            skills = extract_skills_from_text_without_jd(resume_text, industry)
-
-            # calculate_resume_quality_score_for_free_tier
-            resume_quality_score, necessary_sections_score, metrics_score = calculate_resume_quality_score_for_free_tier(
-                resume_text, False)
-
-            # give the response to agent6_finalizer
-            agent6_response = await resume_feedback_free_tier(resume_text, skills["skills"] + skills["soft_skills"], None, None, resume_quality_score, 0, metrics_score, necessary_sections_score, user_goal)
-
-            content = {
-                "feedback": agent6_response,
-                "industry": industry,
-                "soft_skills": skills["soft_skills"],
-                "hard_skills": skills["skills"],
-                "matching_skills_score": 0,
-                "missing_skills": [],
-                "resume_quality_score": resume_quality_score,
-                "necessary_sections_score": necessary_sections_score,
-                "metrics_score": metrics_score
-            }
-            return JSONResponse(content=content, status_code=status.HTTP_200_OK)
+        free_tier_analyzer = await build_free_tier_graph()
+        state = {"resume_text": resume_text, "jd_text": jd_text, "user_goal": user_goal}
+        result = await free_tier_analyzer.ainvoke(state)
+        content = {
+            "intent": result["intent"],
+            "analyzer": result["analyzer"],
+            "ats": result["ats"],
+            "feedback": result["feedback"]
+        }
+        if anonymous_uuid:
+            await increment_monthly_usage(anonymous_uuid)
+        return JSONResponse(content=content, status_code=status.HTTP_200_OK)
     except HTTPException:
         raise
     except ValueError as e:
@@ -141,4 +44,4 @@ async def analyze_resume_free_tier(resume_pdf: UploadFile = File(...), jd_text: 
     except Exception as e:
         logger.error(f"Error analyzing resume: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail="Internal server error while analyzing resume")
+                            detail="INTERAL_SERVER_ERROR: An error occurred while analyzing the resume. Please try again later.")
