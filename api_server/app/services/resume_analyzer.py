@@ -3,9 +3,7 @@ import re
 from datetime import datetime
 
 import pymupdf
-from app.ai_agents.agent3_ats import has_metrics
-from app.helpers.resume_helper import (extract_section_content, match_variants,
-                                       normalize_text)
+from app.helpers.resume_helper import match_variants, normalize_text
 from app.internal_db.skills import (BUSINESS_SKILL_NORMALIZATION,
                                     IT_SKILL_NORMALIZATION,
                                     SOFT_SKILL_NORMALIZATION)
@@ -14,7 +12,7 @@ from fastapi import UploadFile
 
 logger = logging.getLogger(__name__)
 
-
+############################### EXTRACT SECTIONS ################################
 async def extract_text_from_resume(resume_pdf_file: UploadFile) -> str:
     try:
         if not resume_pdf_file.filename or not resume_pdf_file.filename.lower().endswith('.pdf'):
@@ -40,21 +38,7 @@ async def extract_text_from_resume(resume_pdf_file: UploadFile) -> str:
         raise e
 
 
-def extract_contact_info(text: str):
-    # Use regex to find potential email addresses and phone numbers
-    email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
-    phone_pattern = r'\+?\d{1,4}?[-.\s]?\(?\d{1,3}?\)?[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}'
-
-    emails = re.findall(email_pattern, text)
-    phones = re.findall(phone_pattern, text)
-
-    return {
-        "emails": emails,
-        "phone_numbers": phones
-    }
-
-
-def extract_soft_skills_from_text(text: str):
+def __extract_soft_skills_from_text(text: str):
     text = normalize_text(text)
     found_soft_skills = {
         canonical for canonical, variants in SOFT_SKILL_NORMALIZATION.items()
@@ -65,7 +49,7 @@ def extract_soft_skills_from_text(text: str):
 
 def extract_skills_from_text_without_jd(text: str, field: str):
     text = normalize_text(text)
-    found_soft_skills = extract_soft_skills_from_text(text)
+    found_soft_skills = __extract_soft_skills_from_text(text)
     if field == 'it' or field == 'technology' or field == 'software' or field == 'tech':
         skills_to_check = IT_SKILL_NORMALIZATION
     elif field == 'business':
@@ -84,10 +68,10 @@ def extract_skills_from_text_without_jd(text: str, field: str):
     }
 
 
-def extract_skills_from_text_with_jd(text: str, jd_text: str):
+def extract_skills_from_text_with_jd(text: str, jd_text: str, limit: int = 5):
     text = normalize_text(text)
+    jd_text = normalize_text(jd_text)
     jd_skills = extract_skills_from_jd_text(jd_text)
-    found_soft_skills = extract_soft_skills_from_text(text)
     all_skills = {**IT_SKILL_NORMALIZATION, **BUSINESS_SKILL_NORMALIZATION}
     found_skills = {
         canonical for canonical, variants in all_skills.items()
@@ -96,21 +80,71 @@ def extract_skills_from_text_with_jd(text: str, jd_text: str):
     missing_skills = set(jd_skills) - found_skills
     matching_skills_score = len(found_skills) / \
         len(jd_skills) if jd_skills else 0.1
+
+    found_soft_skills_from_jd = set(__extract_soft_skills_from_text(jd_text))
+    found_soft_skills_from_resume = set(__extract_soft_skills_from_text(text))
+    
+    missing_soft_skills = found_soft_skills_from_jd - found_soft_skills_from_resume
+    matching_soft_skills = found_soft_skills_from_jd & found_soft_skills_from_resume
+    matching_soft_skills_score = len(matching_soft_skills) / len(found_soft_skills_from_jd) if found_soft_skills_from_jd else 0.1
     return {
         "skills": list(found_skills),
         # Limit to top 5 missing skills for free users
-        "missing_skills": list(missing_skills)[:5],
-        "matching_skills_score": matching_skills_score,
-        "soft_skills": list(found_soft_skills)
+        "missing_skills": list(missing_skills)[:limit],
+        "matching_skills_score": min(matching_skills_score, 1.0),
+        "soft_skills_in_resume": list(found_soft_skills_from_resume),
+        "missing_soft_skills": list(missing_soft_skills)[:limit],
+        "matching_soft_skills_score": min(matching_soft_skills_score, 1.0),
     }
 
 
-def has_summary(text: str):
-    summary_pattern = r'^\s*(summary|objective|profile|professional summary|career objective|professional objective|summary of qualification)\b'
-    return re.search(summary_pattern, text, re.IGNORECASE | re.MULTILINE) is not None
+def extract_sections_from_text(text: str):
+    text = re.sub(r'\r\n', '\n', text)
+    section_patterns = {
+        "summary": r'^\s*(summary|objective|profile|professional summary|career objective|professional objective|summary of qualification)\b',
+        "skills": r'^\s*(skills|technical skills)\b',
+        "education": r'^\s*(education|academic background)\b',
+        "experience": r'^\s*(experience|work experience|employment history|professional experience)\b',
+        "projects": r'^\s*(projects|project experience)\b',
+        "certifications": r'^\s*(certifications|certification|courses|training|qualifications|credentials|licenses)\b',
+        "languages": r'^\s*(languages|language skills)\b',
+    }
 
+    matches = []
+    for section, pattern in section_patterns.items():
+        for match in re.finditer(pattern, text, re.IGNORECASE | re.MULTILINE):
+            matches.append((section, match.start()))
 
-def estimate_experience_years(text: str):
+    matches.sort(key=lambda x: x[1])
+
+    extracted = {}
+    for i in range(len(matches)):
+        section, start = matches[i]
+        end = matches[i + 1][1] if i + 1 < len(matches) else len(text)
+
+        content = text[start:end].strip()
+
+        # keep longest match if duplicate section appears
+        if section not in extracted or len(content) > len(extracted[section]):
+            extracted[section] = content
+
+    return extracted
+
+def extract_contact_info(text: str):
+    # Use regex to find potential email addresses and phone numbers
+    email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+    phone_pattern = r'\+?\d{1,4}?[-.\s]?\(?\d{1,3}?\)?[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}'
+
+    emails = re.findall(email_pattern, text)
+    phones = re.findall(phone_pattern, text)
+
+    return {
+        "emails": emails,
+        "phone_numbers": phones
+    }
+
+############################### RULE-BASED ANALYSIS ################################
+def __estimate_experience_years(text: str):
     total_years = 0
     current_year = datetime.now().year
 
@@ -138,65 +172,39 @@ def estimate_experience_years_from_sections(sections: dict):
     text = sections.get("experience", "")
     if not text:
         return 0
-    return estimate_experience_years(text)
+    return __estimate_experience_years(text)
 
 
-def calculate_resume_quality_score_for_free_tier(text: str, jd_provided: bool, jd_text: str = ""):
-    score = 0
-    sections = extract_section_content(text)
-    years_exp = estimate_experience_years_from_sections(sections)
-    summary_present = has_summary(text)
-
-    # -------------------------
-    # 1. Sections (0.5)
-    # -------------------------
-    section_score = 0
-    if "skills" in sections:
-        section_score += 0.5
-    if "education" in sections:
-        section_score += 0.5
-
-    score += 0.5 * section_score
-
-    # -------------------------
-    # 2. Experience presence (0.1)
-    # -------------------------
-    if "experience" in sections:
-        score += 0.1
-        section_score += 0.5
-    elif "projects" in sections:
-        score += 0.07
-        section_score += 0.3
-
-    # -------------------------
-    # 3. Summary (0.1)
-    # -------------------------
-    if years_exp >= 3:
-        score += 0.1 if summary_present else 0
-        section_score += 0.5 if summary_present else 0
+# Optional sections like certifications, languages detected in the resume is a plus
+def has_metrics(text: str):
+    # Check for presence of numbers that could indicate metrics in the experience section and/or projects section
+    sections = extract_sections_from_text(text)
+    experience_text = sections.get("experience", "")
+    projects_text = sections.get("projects", "")
+    # Look for patterns including numbers, %, $, etc. in experience and projects sections
+    metrics_pattern = r'(\d+[\w%$]*)'
+    # Make sure every bullet point has some metrics
+    experience_bullets = [
+        b for b in re.split(r'[\r\n]+', experience_text) if b.strip()
+    ]
+    projects_bullets = [
+        b for b in re.split(r'[\r\n]+', projects_text) if b.strip()
+    ]
+    experience_metrics = sum(
+        bool(re.search(metrics_pattern, bullet)) for bullet in experience_bullets
+    )
+    projects_metrics = sum(
+        bool(re.search(metrics_pattern, bullet)) for bullet in projects_bullets
+    )
+    total_bullets = len(experience_bullets) + len(projects_bullets)
+    if total_bullets == 0:
+        return 0.0
+    metrics_ratio = (experience_metrics + projects_metrics) / total_bullets
+    if metrics_ratio >= 0.7:
+        return 1.0
+    elif metrics_ratio >= 0.5:
+        return 0.7
+    elif metrics_ratio >= 0.3:
+        return 0.4
     else:
-        score += 0.1 if summary_present else 0.03
-        section_score += 0.5 if summary_present else 0.3
-
-    # -------------------------
-    # 4. Basic metrics (0.1)
-    # -------------------------
-    metrics_score = has_metrics(text)
-    score += 0.1 * metrics_score
-
-    # -------------------------
-    # 5. Contact info (0.2)
-    # -------------------------
-    contact_info = extract_contact_info(text)
-    if contact_info["emails"] and contact_info["phone_numbers"]:
-        score += 0.2
-
-    if jd_provided:
-        skills_info = extract_skills_from_text_with_jd(text, jd_text)
-        score = 0.3 * score + 0.7 * skills_info["matching_skills_score"]
-
-    # Keep the historical "section_score - 1.0" intent, but make it stable (0..1) before converting to percent.
-    necessary_sections_score = max(0.0, min(1.0, section_score - 1.0))
-    return round(score, 3) * 100, round(necessary_sections_score, 3) * 100, metrics_score
-
-############################ Advanced features using AI #########################################
+        return 0.0
