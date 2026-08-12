@@ -26,3 +26,4 @@ def is_premium_user(user_id: int, db: Session = Depends(get_db)):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This action is only available to PREMIUM users."
         )
+    return True

@@ -39,12 +39,21 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
 
-    # 🗄️ Database
+    # 🛢 Database (SQL)
     SQL_DB_URL: str
 
     # ⚡ Redis
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
+
+    # 🛢 Database (NoSQL)
+    MONGODB_URI: str = "mongodb://localhost:27017/"
+    MONGODB_NAME: str = "job_recommendation_system"
+
+    # 🛢 Vector Database
+    PINECONE_API_KEY: str = "pc_local_api_key"
+    PINECONE_HOST: str = "http://localhost:5080"
+    PINECONE_INDEX_NAME: str = "pc-job-recommendation-system-v1"
 
     class Config:
         env_file = BASE_DIR / ".env"

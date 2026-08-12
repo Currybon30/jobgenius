@@ -8,12 +8,15 @@ from app.core.config import settings
 from app.core.logging_config import setup_logging
 from app.db.base import Base
 from app.db.redis import close_redis, init_redis
+from app.db.mongo import close_mongo, init_mongo
+from app.db.pinecone import close_pinecone, init_pinecone
 from app.db.session import engine
 from app.middlewares.limit import rate_limit_middleware
 from app.middlewares.logging import logging_middleware
 from app.middlewares.timing import timing_middleware
 from app.routes.resume_router import router as resume_router
 from app.routes.user_router import router as user_router
+import asyncio
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -24,17 +27,17 @@ async def lifespan(app: FastAPI):
     try:
         # STARTUP LOGIC
         logger.info("Initializing application...")
-        init_redis()
+        await asyncio.gather(init_redis(), init_mongo(), init_pinecone())
         Base.metadata.create_all(bind=engine)
 
         yield
-
-        # SHUTDOWN LOGIC
-        logger.info("Shutting down application...")
-        await close_redis()
     except Exception:
         logger.error("Error during application lifespan")
         raise
+    finally:
+        # SHUTDOWN LOGIC
+        logger.info("Shutting down application...")
+        await asyncio.gather(close_redis(), close_mongo(), close_pinecone())
 
 app = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG, lifespan=lifespan)
 

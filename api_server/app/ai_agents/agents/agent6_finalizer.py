@@ -191,3 +191,16 @@ async def finalizer_agent_free_tier(
 
 
     return safe_parse(response, "finalizer_agent_free_tier")
+
+
+async def finalizer_agent_premium(
+    resume_text: str,
+    intent: dict,
+    analyzer: dict,
+    ats: dict,
+    user_goal: Optional[str] = None,
+):
+    """
+    Agent 6 — final premium feedback.
+    """
+    pass

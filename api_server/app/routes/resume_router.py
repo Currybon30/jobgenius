@@ -22,7 +22,6 @@ async def analyze_resume_free_tier(
     anonymous_uuid: Annotated[str | None, Cookie()] = None
 ):
     try:
-        # agent 2 analyzer
         resume_text = await extract_text_from_resume(resume_pdf)
         free_tier_analyzer = await build_free_tier_graph()
         state = {"resume_text": resume_text, "jd_text": jd_text, "user_goal": user_goal}

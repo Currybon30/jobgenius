@@ -37,7 +37,7 @@ SOFT_SKILL_NORMALIZATION = {
     "conflict resolution": ["conflict resolution"],
     "decision making": ["decision making"],
     "stress management": ["stress management"],
-    "collaboration": ["collaboration", "collaborate"],
+    "collaboration": ["collaboration", "collaborate", "collaborative"],
 }
 
 
