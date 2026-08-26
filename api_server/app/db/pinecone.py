@@ -17,7 +17,7 @@ async def init_pinecone():
         index_model = await pinecone_client.create_index(
             name=index_name,
             vector_type="dense",
-            dimension=1536,
+            dimension=768,
             metric="cosine",
             spec=ServerlessSpec(
                 cloud="aws",
@@ -32,6 +32,8 @@ async def init_pinecone():
     
     index_info = await pinecone_client.describe_index(index_name)
     host = index_info.host
+    if host is None:
+        raise RuntimeError(f"Pinecone index {index_name} has no host")
     if not host.startswith(("https://", "http://")):
         host = f"http://{host}"
     elif host.startswith("https://"):

@@ -1,7 +1,6 @@
-from ast import List
 from datetime import datetime
 from datetime import timezone
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 

@@ -13,7 +13,7 @@ async def init_redis():
         port=settings.REDIS_PORT,
         decode_responses=True
     )
-    is_alive = await redis_client.ping()
+    is_alive = redis_client.ping()
     if not is_alive:
         raise RuntimeError("Failed to connect to Redis")
     logger.info("Redis client initialized and connected successfully")

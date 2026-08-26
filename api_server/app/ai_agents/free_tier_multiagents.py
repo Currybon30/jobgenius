@@ -1,11 +1,10 @@
 from typing import Any, Optional, TypedDict
 
-from langgraph.graph import StateGraph, START, END
-
 from app.ai_agents.agents.agent1_intent import intent_goal_agent
 from app.ai_agents.agents.agent2_analyzer import analyzer_agent_free_tier
 from app.ai_agents.agents.agent3_ats import ats_agent_free_tier
 from app.ai_agents.agents.agent6_finalizer import finalizer_agent_free_tier
+from langgraph.graph import END, START, StateGraph
 
 
 class GraphState(TypedDict):
@@ -21,7 +20,7 @@ class GraphState(TypedDict):
     feedback: dict[str, Any] | str
 
 
-async def agent1_node(state: GraphState) -> GraphState:
+async def agent1_node(state: GraphState) -> dict[str, Any]:
     intent = await intent_goal_agent(
         state["resume_text"],
         state.get("jd_text"),
@@ -30,22 +29,24 @@ async def agent1_node(state: GraphState) -> GraphState:
     return {"intent": intent}
 
 
-async def agent2_node(state: GraphState) -> GraphState:
+async def agent2_node(state: GraphState) -> dict[str, Any]:
     industry = state.get("intent", {}).get("industry")
+    if not isinstance(industry, str):
+        industry = ""
     analyzer = analyzer_agent_free_tier(
         state["resume_text"],
         industry,
-        state.get("jd_text"),
+        state.get("jd_text") or "",
     )
     return {"analyzer": analyzer}
 
 
-async def agent3_node(state: GraphState) -> GraphState:
+async def agent3_node(state: GraphState) -> dict[str, Any]:
     ats = ats_agent_free_tier(state["analyzer"])
     return {"ats": ats}
 
 
-async def agent6_node(state: GraphState) -> GraphState:
+async def agent6_node(state: GraphState) -> dict[str, Any]:
     feedback = await finalizer_agent_free_tier(
         resume_text=state["resume_text"],
         intent=state.get("intent") or {},

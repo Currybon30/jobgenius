@@ -24,6 +24,7 @@ class Settings(BaseSettings):
 
     # 🤖 AI
     AI_MODEL_NAME: str = "qwen2.5:7b"
+    EMBEDDING_MODEL_NAME: str = "nomic-embed-text-v2-moe:latest"
     OLLAMA_HOST: str = "http://localhost:11434"
 
     # 🔎 Job Search API (RapidAPI - Global Jobs Search)
@@ -70,4 +71,4 @@ class Settings(BaseSettings):
 
 
 # Singleton settings object
-settings = Settings()
+settings = Settings() # pyright: ignore[reportCallIssue]

@@ -1,3 +1,5 @@
+from typing import Optional
+
 from app.services.resume_analyzer import (
                     extract_skills_from_text_without_jd, 
                     extract_skills_from_text_with_jd, 
@@ -5,7 +7,7 @@ from app.services.resume_analyzer import (
                     has_metrics, extract_contact_info, 
                     extract_skills_from_text_with_jd, extract_sections_from_text)
 
-def analyzer_agent_free_tier(resume_text, industry: str = None, jd_text: str = None):
+def analyzer_agent_free_tier(resume_text, industry: str = "", jd_text: Optional[str] = None):
     """
     No languages and certifications are checked for now.
     """

@@ -2,45 +2,103 @@
 # If the user logged in and is a free user, show jobs matching the user's location, industry and job title
 # If the user logged in and is a premium user, show jobs matching the user's location, industry, job title, job level, etc.
 from app.core.config import settings
+from app.db.pinecone import get_pinecone_index
+from app.helpers.job_api_helper import jsearch_format_data, jsearch_json_to_text
+from app.helpers.embedding_helper import embed_text
+from app.db.mongo import get_mongo_client
 import niquests
 import logging
 from typing import List, Optional
-from langchain.agents import tool
+from fastmcp import FastMCP
 
 logger = logging.getLogger(__name__)
+mcp = FastMCP("job_service")
+mongo_client = get_mongo_client()
+mongo_db = mongo_client[settings.MONGODB_NAME]
+jobs_collection = mongo_db["jobs"]
+pinecone_index = get_pinecone_index()
 
-@tool("search_jobs_canada", 
+
+@mcp.tool("search_jobs_canada", 
     description="""
     Search jobs in Canada through the third-party API (JSearch API)
-    Args:
+    Parameters:
         query: The query to search for jobs
-        What should be included in the query?
-        - Job title
-        - City in Canada
         date_posted (optional): Date posted (if given) - Default values: all, today, 3days, week, month
         employment_types (optional): Employment types (if given) - Default values: FULLTIME, CONTRACTOR, PARTTIME, INTERN
     Returns:
         A list of jobs in JSON format
     """)
-async def search_jobs(query: str, date_posted: str = "all", employment_types: Optional[List[str]] = None):
-    if employment_types:
-        employment_types = ",".join(employment_types)
-
-    payload = {
+async def search_jobs_canada(query: str, date_posted: str = "all", employment_types: Optional[List[str]] = None):
+    params = {
         "query": query,
-        "page": 5,
+        "num_pages": 3,
         "country": "ca",
         "language": "en",
-        "employment_types": employment_types if employment_types else "",
-        "date_posted": date_posted if date_posted else "all"
+        "date_posted": date_posted or "all",
     }
+    if employment_types:
+        params["employment_types"] = ",".join(employment_types)
 
     response = await niquests.aget(
-        url=f"{settings.JSEARCH_HOST}/search-v2",
+        f"{settings.JSEARCH_HOST}/search-v2",
         headers=settings.JSEARCH_HEADERS,
-        params=payload,
+        params=params,
+        timeout=30,
     )
-    if not response.status == "OK":
-        raise Exception(f"Failed to search jobs: {response.status}")
-    data = response.get("data")
-    return data
+    response.raise_for_status()
+    body = response.json()
+
+    if body.get("status") != "OK":
+        logger.error("JSearch request failed: %s", body)
+        raise RuntimeError(f"Failed to search jobs: {body.get('status')}")
+
+    data = body.get("data") or {}
+    return data.get("jobs", [])
+
+
+async def store_jobs_to_mongodb(job_data, json_to_text: str, pinecone_id: Optional[str] = None, model: Optional[str] = None):
+    job = jsearch_format_data(job_data, json_to_text, pinecone_id, model)
+    await jobs_collection.insert_one(job)
+
+
+async def store_jobs_to_pinecone(data):
+    try:
+        for job_data in data:
+            pinecone_id = "vec" + job_data.get("job_id")
+            json_to_text = jsearch_json_to_text(job_data)
+            embedding = await embed_text(json_to_text)
+            await pinecone_index.upsert(
+                vectors=[
+                    {
+                        "id": pinecone_id,
+                        "values": embedding,
+                        "metadata": job_data,
+                    }
+                ],
+                namespace="jobs"
+            )
+            # Store job to MongoDB after upserting to Pinecone
+            try:
+                await store_jobs_to_mongodb(job_data, json_to_text, pinecone_id, "nomic-embed-text-v2-moe:latest")
+            except Exception as e:
+                logger.error(f"Error storing job {job_data.get('job_id')} to MongoDB: {e}")
+                continue
+        logger.info("All jobs stored to MongoDB and Pinecone successfully")
+        return True
+    except Exception as e:
+        logger.error(f"Error storing jobs to MongoDB and Pinecone: {e}")
+        return False
+
+async def get_jobs_in_pinecone(query: str) -> List[dict]:
+    try:
+        embedding = await embed_text(query)
+        results = await pinecone_index.query(
+            vector=embedding,
+            top_k=10,
+            namespace="jobs"
+        )
+        return results.get("matches", [])
+    except Exception as e:
+        logger.error(f"Error getting jobs in Pinecone: {e}")
+        return []

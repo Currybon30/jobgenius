@@ -4,9 +4,9 @@ import logging
 import re
 
 from app.core.config import settings
-from ollama import AsyncClient
+from app.core.ollama_config import get_ollama_client
 
-client = AsyncClient(settings.OLLAMA_HOST)
+client = get_ollama_client()
 logger = logging.getLogger(__name__)
 
 

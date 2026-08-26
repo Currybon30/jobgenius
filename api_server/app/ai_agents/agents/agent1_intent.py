@@ -53,7 +53,6 @@ async def intent_goal_agent(resume_text, jd_text=None, user_goal=None):
     - optimization_strategy.must_have = critical skills from JD
     - optimization_strategy.nice_to_have = optional or secondary skills
     - optimization_strategy.avoid = common resume mistakes (e.g., "generic wording", "no metrics")
-
     - Be realistic. Do NOT invent experience or skills not present or implied.
 
     Return ONLY JSON.

@@ -10,6 +10,7 @@ from app.db.base import Base
 from app.db.redis import close_redis, init_redis
 from app.db.mongo import close_mongo, init_mongo
 from app.db.pinecone import close_pinecone, init_pinecone
+from app.core.ollama_config import close_ollama, init_ollama
 from app.db.session import engine
 from app.middlewares.limit import rate_limit_middleware
 from app.middlewares.logging import logging_middleware
@@ -27,7 +28,7 @@ async def lifespan(app: FastAPI):
     try:
         # STARTUP LOGIC
         logger.info("Initializing application...")
-        await asyncio.gather(init_redis(), init_mongo(), init_pinecone())
+        await asyncio.gather(init_redis(), init_mongo(), init_pinecone(), init_ollama())
         Base.metadata.create_all(bind=engine)
 
         yield
@@ -37,7 +38,7 @@ async def lifespan(app: FastAPI):
     finally:
         # SHUTDOWN LOGIC
         logger.info("Shutting down application...")
-        await asyncio.gather(close_redis(), close_mongo(), close_pinecone())
+        await asyncio.gather(close_redis(), close_mongo(), close_pinecone(), close_ollama())
 
 app = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG, lifespan=lifespan)
 

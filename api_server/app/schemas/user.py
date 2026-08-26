@@ -4,8 +4,6 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from app.models import user
-
 
 class PlanEnum(str, Enum):
     FREE = "FREE"

@@ -24,7 +24,7 @@ async def extract_text_from_resume(resume_pdf_file: UploadFile) -> str:
         doc = pymupdf.open(stream=file_bytes, filetype="pdf")
         text = ""
         for page in doc:
-            text += page.get_text()
+            text += page.get_text() # type: ignore
         doc.close()
         return text
     except FileNotFoundError as e:
