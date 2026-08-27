@@ -1,0 +1,129 @@
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+from app.core.config import settings
+from app.db.mongo import close_mongo, get_mongo_client, init_mongo
+from app.db.s3 import close_s3_client, get_s3_client, init_s3_client
+from app.services.resume_service import store_resume_to_mongodb
+
+SAMPLE_ANALYSIS = {
+    "intent": {
+        "target_role": "Software Engineer",
+        "seniority_level": "mid",
+        "industry": "tech",
+        "priority_goals": ["grow"],
+        "focus_areas": ["backend"],
+        "top_keywords": ["python"],
+        "optimization_strategy": {},
+    },
+    "analyzer": {
+        "sections": {"experience": "built APIs"},
+        "years_exp": 5,
+        "emails": ["a@b.com"],
+        "phone_numbers": [],
+        "hard_skills": ["Python"],
+        "soft_skills": ["communication"],
+    },
+    "ats": {
+        "resume_score": 80,
+        "section_score": 70,
+        "experience_projects_score": 75,
+        "skills_quality_score": 80,
+        "summary_quality_score": 70,
+        "formatting_score": 90,
+    },
+    "feedback": {
+        "summary": "Solid resume",
+        "skills_feedback": "Add keywords",
+        "experience_feedback": "Quantify",
+        "structure_feedback": "OK",
+        "simple_suggestions": ["Add metrics"],
+    },
+    "optimizer": {
+        "optimized_resume": "Optimized text",
+        "optimized_sections": {},
+        "keywords_integrated": ["python"],
+        "changes_made": [],
+        "suggested_additions_if_true": [],
+        "optimization_notes": "",
+    },
+}
+
+TEST_USER_ID = 999001
+TEST_FILENAME = "integration_test_resume.pdf"
+
+
+@pytest.fixture
+async def infra():
+    await init_mongo()
+    await init_s3_client()
+    yield
+    await close_mongo()
+    await close_s3_client()
+
+
+@pytest.mark.asyncio
+async def test_store_resume_to_mongodb_integration(infra, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    Path(TEST_FILENAME).write_bytes(b"%PDF-1.4 integration-test")
+
+    resume = SimpleNamespace(filename=TEST_FILENAME)
+    resume_id = f"{TEST_USER_ID}_{TEST_FILENAME}"
+
+    mongo = get_mongo_client()
+    db = mongo[settings.MONGODB_NAME]
+    await db["resumes"].delete_many({"user_id": TEST_USER_ID})
+    await db["resume_for_job_recommendation"].delete_many({"resume_id": resume_id})
+
+    ok = await store_resume_to_mongodb(TEST_USER_ID, resume, SAMPLE_ANALYSIS)
+    assert ok is True
+
+    doc = await db["resumes"].find_one(
+        {"resume_id": resume_id},
+        sort=[("version", -1)],
+    )
+    assert doc is not None
+    assert doc["user_id"] == TEST_USER_ID
+    assert doc["version"] == 1
+    assert doc["filename"] == TEST_FILENAME
+    assert doc["storage_path"] == f"{TEST_USER_ID}/{TEST_FILENAME}/1.pdf"
+    assert "analysis" in doc
+    assert doc["analysis"]["target_role"] == "Software Engineer"
+
+    rec = await db["resume_for_job_recommendation"].find_one({"resume_id": resume_id})
+    assert rec is not None
+    assert rec["version"] == 1
+    assert "Software Engineer" in rec["full_combined_text"]
+
+    s3 = await get_s3_client()
+    head = s3.head_object(
+        Bucket=settings.S3_BUCKET_NAME,
+        Key=doc["storage_path"],
+    )
+    assert head["ResponseMetadata"]["HTTPStatusCode"] == 200
+
+    ok_again = await store_resume_to_mongodb(TEST_USER_ID, resume, SAMPLE_ANALYSIS)
+    assert ok_again is True
+
+    latest = await db["resumes"].find_one(
+        {"resume_id": resume_id},
+        sort=[("version", -1)],
+    )
+    assert latest["version"] == 2
+    assert latest["storage_path"] == f"{TEST_USER_ID}/{TEST_FILENAME}/2.pdf"
+
+    updated_rec = await db["resume_for_job_recommendation"].find_one(
+        {"resume_id": resume_id}
+    )
+    assert updated_rec["version"] == 2
+
+    s3.head_object(
+        Bucket=settings.S3_BUCKET_NAME,
+        Key=latest["storage_path"],
+    )
+
+    # Cleanup left out on purpose so you can inspect MongoDB + S3 after the run:
+    # user_id=999001, resume_id=999001_integration_test_resume.pdf
+    # S3: 999001/integration_test_resume.pdf/1.pdf and .../2.pdf
