@@ -47,6 +47,13 @@ class Settings(BaseSettings):
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
 
+    # 🛢 Localstack S3
+    LOCALSTACK_HOST: str = "http://localhost:4566"
+    LOCALSTACK_ACCESS_KEY: str = "test"
+    LOCALSTACK_SECRET_ACCESS_KEY: str = "test"
+    LOCALSTACK_REGION_NAME: str = "us-east-1"
+    S3_BUCKET_NAME: str = "jobgenius-resume-bucket"
+
     # 🛢 Database (NoSQL)
     MONGODB_URI: str = "mongodb://localhost:27017/"
     MONGODB_NAME: str = "job_recommendation_system"

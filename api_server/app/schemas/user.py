@@ -17,7 +17,7 @@ class UserResponse(BaseModel):
     plan_expiry: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # 🔹 Create (if needed)

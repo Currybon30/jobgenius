@@ -6,12 +6,12 @@ import re
 from app.core.config import settings
 from app.core.ollama_config import get_ollama_client
 
-client = get_ollama_client()
 logger = logging.getLogger(__name__)
 
 
 async def llm_call(prompt: str):
     try:
+        client = get_ollama_client()
         response = await asyncio.wait_for(
             client.generate(
                 model=settings.AI_MODEL_NAME,

@@ -1,12 +1,10 @@
 from datetime import datetime, timezone
 from typing import Optional, List
 
+from bson import ObjectId
 from pydantic import BaseModel, Field
 
 class ResumeAnalysis(BaseModel):
-    user_id: int
-    resume_id: int
-
     # Analysis of the resume
     # Intent agent
     target_role: str
@@ -56,8 +54,10 @@ class ResumeAnalysis(BaseModel):
 
 
 class Resume(BaseModel):
+    id: ObjectId
     user_id: int
-    resume_id: int
+    resume_id: str
+    version: int = 1
     filename: str
     storage_path: Optional[str] = None # will be implemented in the future
     analysis: ResumeAnalysis
@@ -68,5 +68,6 @@ class Resume(BaseModel):
 class ResumeForJobRecommendation(BaseModel):
     user_id: int
     # Latest analysis of the resume
-    resume_id: int
+    resume_id: str
+    version: int = 1
     full_combined_text: str

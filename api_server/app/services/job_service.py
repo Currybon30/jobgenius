@@ -13,10 +13,6 @@ from fastmcp import FastMCP
 
 logger = logging.getLogger(__name__)
 mcp = FastMCP("job_service")
-mongo_client = get_mongo_client()
-mongo_db = mongo_client[settings.MONGODB_NAME]
-jobs_collection = mongo_db["jobs"]
-pinecone_index = get_pinecone_index()
 
 
 @mcp.tool("search_jobs_canada", 
@@ -58,31 +54,68 @@ async def search_jobs_canada(query: str, date_posted: str = "all", employment_ty
 
 
 async def store_jobs_to_mongodb(job_data, json_to_text: str, pinecone_id: Optional[str] = None, model: Optional[str] = None):
+    mongo_client = get_mongo_client()
+    mongo_db = mongo_client[settings.MONGODB_NAME]
+    jobs_collection = mongo_db["jobs"]
     job = jsearch_format_data(job_data, json_to_text, pinecone_id, model)
-    await jobs_collection.insert_one(job)
+    await jobs_collection.update_one(
+        {"id": job["id"], "source": job["source"]},
+        {"$set": job},
+        upsert=True,
+    )
+
+
+def _pinecone_job_metadata(job_data: dict) -> dict:
+    return {
+        k: v
+        for k, v in {
+            "job_id": job_data.get("job_id"),
+            "job_title": job_data.get("job_title"),
+            "employer_name": job_data.get("employer_name"),
+            "job_city": job_data.get("job_city"),
+            "job_state": job_data.get("job_state"),
+            "job_country": job_data.get("job_country"),
+            "job_apply_link": job_data.get("job_apply_link"),
+        }.items()
+        if v is not None
+    }
 
 
 async def store_jobs_to_pinecone(data):
     try:
+        pinecone_index = get_pinecone_index()
         for job_data in data:
-            pinecone_id = "vec" + job_data.get("job_id")
+            job_id = job_data.get("job_id")
+            if not job_id:
+                logger.warning("Skipping job without job_id")
+                continue
+
+            pinecone_id = "vec" + job_id
             json_to_text = jsearch_json_to_text(job_data)
             embedding = await embed_text(json_to_text)
+            if not embedding:
+                logger.error(f"Empty embedding for job {job_id}")
+                continue
+
             await pinecone_index.upsert(
                 vectors=[
                     {
                         "id": pinecone_id,
                         "values": embedding,
-                        "metadata": job_data,
+                        "metadata": _pinecone_job_metadata(job_data),
                     }
                 ],
-                namespace="jobs"
+                namespace="jobs",
             )
-            # Store job to MongoDB after upserting to Pinecone
             try:
-                await store_jobs_to_mongodb(job_data, json_to_text, pinecone_id, "nomic-embed-text-v2-moe:latest")
+                await store_jobs_to_mongodb(
+                    job_data,
+                    json_to_text,
+                    pinecone_id,
+                    settings.EMBEDDING_MODEL_NAME,
+                )
             except Exception as e:
-                logger.error(f"Error storing job {job_data.get('job_id')} to MongoDB: {e}")
+                logger.error(f"Error storing job {job_id} to MongoDB: {e}")
                 continue
         logger.info("All jobs stored to MongoDB and Pinecone successfully")
         return True
@@ -92,13 +125,32 @@ async def store_jobs_to_pinecone(data):
 
 async def get_jobs_in_pinecone(query: str) -> List[dict]:
     try:
+        pinecone_index = get_pinecone_index()
         embedding = await embed_text(query)
+        if not embedding:
+            return []
+
         results = await pinecone_index.query(
             vector=embedding,
             top_k=10,
-            namespace="jobs"
+            namespace="jobs",
         )
-        return results.get("matches", [])
+        matches = getattr(results, "matches", None)
+        if matches is None and isinstance(results, dict):
+            matches = results.get("matches", [])
+
+        normalized_matches = []
+        for match in matches or []:
+            if hasattr(match, "model_dump"):
+                normalized_matches.append(match.model_dump())
+            elif isinstance(match, dict):
+                normalized_matches.append(match)
+            else:
+                normalized_matches.append(dict(match))
+        return normalized_matches
     except Exception as e:
         logger.error(f"Error getting jobs in Pinecone: {e}")
         return []
+
+async def job_recommendation(resume_id: str, job_id: str) -> dict:
+    pass

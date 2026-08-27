@@ -1,5 +1,5 @@
 import logging
-from pinecone import AsyncPinecone, ServerlessSpec
+from pinecone import AsyncPinecone, ServerlessSpec, AsyncIndex
 from app.core.config import settings
 
 pinecone_client: AsyncPinecone | None = None
@@ -44,27 +44,27 @@ async def init_pinecone():
         ssl_verify=False
     )
     try:
-        await pinecone_index.describe_index_stats()
-        logger.info(f"Pinecone index {index_name} is ready")
+        index_stats = await pinecone_index.describe_index_stats()
+        logger.info(f"Pinecone index {index_name} stats: {index_stats}")
     except Exception as e:
         logger.error(f"Error describing Pinecone index {index_name}: {e}")
-        raise e
+        raise
 
 
 async def close_pinecone():
     global pinecone_client, pinecone_index
     if pinecone_client is not None:
         await pinecone_client.close()
-        pinecone_client = None
-        pinecone_index = None
+        del pinecone_client
+        del pinecone_index
         logger.info("Pinecone client closed successfully")
 
-def get_pinecone_client() -> AsyncPinecone:
+async def get_pinecone_client() -> AsyncPinecone:
     if pinecone_client is None:
         raise RuntimeError("Pinecone client not initialized")
     return pinecone_client
 
-def get_pinecone_index():
+def get_pinecone_index() -> AsyncIndex:
     if pinecone_index is None:
         raise RuntimeError("Pinecone index not initialized")
     return pinecone_index

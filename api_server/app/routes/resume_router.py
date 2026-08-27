@@ -2,7 +2,7 @@ import logging
 from typing import Annotated
 
 from fastapi import (APIRouter, Body, Depends, File, Header, HTTPException,
-                     UploadFile, status, Cookie, Form)
+                     UploadFile, status, Cookie, Form, BackgroundTasks)
 from fastapi.responses import JSONResponse
 
 from app.middlewares.limit import increment_monthly_usage
@@ -19,7 +19,8 @@ async def analyze_resume_free_tier(
     resume_pdf: Annotated[UploadFile, File(...)], # required
     jd_text: Annotated[str, Form()] = "", # optional
     user_goal: Annotated[str, Form()] = "", # optional
-    anonymous_uuid: Annotated[str | None, Cookie()] = None
+    anonymous_uuid: Annotated[str | None, Cookie()] = None,
+    background_tasks: BackgroundTasks = BackgroundTasks()
 ):
     try:
         resume_text = await extract_text_from_resume(resume_pdf)
