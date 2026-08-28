@@ -3,3 +3,4 @@ __pycache__
 .env
 .cursorignore
 external
+.pytest_cache

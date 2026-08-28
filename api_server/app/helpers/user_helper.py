@@ -1,23 +1,25 @@
 import logging
 
-import requests
+import niquests
 
 logger = logging.getLogger(__name__)
 
 
-def get_user_city_and_country(ip_address=None):
+async def get_user_city_and_country(ip_address: str | None = None):
     """
     Resolve location for a client IP.
     Returns (city, country_name, country_code).
     """
     try:
         if ip_address:
-            response = requests.get(
+            response = await niquests.aget(
                 f"https://ipwho.is/{ip_address}", timeout=5
-            ).json()
+            )
+            response = response.json()
         else:
             # Let provider infer request origin IP when one is not supplied.
-            response = requests.get("https://ipwho.is/", timeout=5).json()
+            response = await niquests.aget("https://ipwho.is/", timeout=5)
+            response = response.json()
     except Exception as exc:
         logger.error(f"Failed to query geo provider: {exc}")
         return None, None, None

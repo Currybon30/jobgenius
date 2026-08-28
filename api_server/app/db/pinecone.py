@@ -55,8 +55,8 @@ async def close_pinecone():
     global pinecone_client, pinecone_index
     if pinecone_client is not None:
         await pinecone_client.close()
-        del pinecone_client
-        del pinecone_index
+        pinecone_client = None
+        pinecone_index = None
         logger.info("Pinecone client closed successfully")
 
 async def get_pinecone_client() -> AsyncPinecone:

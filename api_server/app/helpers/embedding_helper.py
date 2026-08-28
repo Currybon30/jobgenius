@@ -1,14 +1,7 @@
-from app.core.config import settings
-from app.core.ollama_config import get_ollama_client
+from app.core.ollama_config import get_ollama_embedding_model
 
 
-async def embed_text(text: str) -> list[float]:
-    ollama_client = get_ollama_client()
-    response = await ollama_client.embed(
-        model=settings.EMBEDDING_MODEL_NAME,
-        input=text,
-    )
-    embeddings = response.embeddings
-    if not embeddings:
-        return []
-    return embeddings[0]
+async def embed_text(text: str):
+    ollama_embedding_model = get_ollama_embedding_model()
+    response = await ollama_embedding_model.aembed_query(text)
+    return response

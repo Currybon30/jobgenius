@@ -23,7 +23,7 @@ async def close_redis():
     global redis_client
     if redis_client is not None:
         await redis_client.aclose()
-        del redis_client
+        redis_client = None
         logger.info("Redis client closed successfully")
 
 

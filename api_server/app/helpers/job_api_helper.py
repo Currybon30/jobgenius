@@ -55,8 +55,6 @@ def jsearch_json_to_text(data: dict) -> str:
     """Combine key JSearch fields into one text blob for embedding/search."""
     parts = [
         data.get("job_title"),
-        data.get("employer_name"),
-        data.get("job_employment_type"),
         ", ".join(
             filter(
                 None,
@@ -67,7 +65,6 @@ def jsearch_json_to_text(data: dict) -> str:
                 ],
             )
         ),
-        data.get("job_salary"),
         data.get("job_description"),
     ]
     return "\n".join(part.strip() for part in parts if isinstance(part, str) and part.strip())
@@ -102,22 +99,22 @@ def jsearch_format_data(data: dict, json_to_text: str, pinecone_id: Optional[str
             city=data.get("job_city") or "",
             province=data.get("job_state"),
             country=(data.get("job_country") or "ca").lower(),
-            postal_code=data.get("job_postal_code"),
+            latitude=data.get("job_latitude"),
+            longitude=data.get("job_longitude"),
             remote=bool(data.get("job_is_remote")),
         ),
+        apply_link=data.get("job_apply_link"),
         salary=Salary(
             job_salary_string=data.get("job_salary"),
             job_salary_min=_to_int(data.get("job_min_salary")),
             job_salary_max=_to_int(data.get("job_max_salary")),
-            job_salary_currency=data.get("job_salary_currency"),
+            job_salary_currency="CAD",
         ),
         employment_type=data.get("job_employment_type"),
         job_description=data.get("job_description"),
         skills=skills,
         requirements=requirements,
         posted_at=_parse_datetime(data.get("job_posted_at_datetime_utc")),
-        expires_at=_parse_datetime(data.get("job_offer_expiration_datetime_utc")),
-        url=data.get("job_apply_link"),
         full_combined_text=json_to_text,
         embedding_info=EmbeddingInfo(
             status="pending" if pinecone_id is None else "completed",

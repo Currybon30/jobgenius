@@ -1,9 +1,9 @@
 import pytest
-from app.services.job_service import search_jobs_canada
+from app.services.job_service import search_jobs
 
 @pytest.mark.asyncio
 async def test_search_jobs_canada():
-    result = await search_jobs_canada("software engineer in Toronto, Canada")
+    result = await search_jobs("software engineer in Toronto, Canada", country="ca", language="en")
     assert result is not None
     assert len(result) > 0
     assert "job_id" in result[0]

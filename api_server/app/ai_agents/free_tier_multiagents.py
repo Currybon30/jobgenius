@@ -42,7 +42,7 @@ async def agent2_node(state: GraphState) -> dict[str, Any]:
 
 
 async def agent3_node(state: GraphState) -> dict[str, Any]:
-    ats = ats_agent_free_tier(state["analyzer"])
+    ats = ats_agent_free_tier(state["resume_text"], state["analyzer"])
     return {"ats": ats}
 
 

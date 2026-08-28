@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import List, Optional
 
 from bson import ObjectId
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 class ResumeAnalysis(BaseModel):
     # Analysis of the resume
@@ -54,6 +54,7 @@ class ResumeAnalysis(BaseModel):
 
 
 class Resume(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     id: ObjectId
     user_id: int
     resume_id: str

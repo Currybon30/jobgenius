@@ -3,7 +3,6 @@ import json
 import logging
 import re
 
-from app.core.config import settings
 from app.core.ollama_config import get_ollama_client
 
 logger = logging.getLogger(__name__)
@@ -12,13 +11,7 @@ logger = logging.getLogger(__name__)
 async def llm_call(prompt: str):
     try:
         client = get_ollama_client()
-        response = await asyncio.wait_for(
-            client.generate(
-                model=settings.AI_MODEL_NAME,
-                prompt=prompt,
-                options={"temperature": 0.2}),
-            timeout=20
-        )
+        response = await client.ainvoke(prompt)
         return response.response
     except asyncio.TimeoutError:
         logger.error("[ERROR] LLM call timed out")

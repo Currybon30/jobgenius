@@ -46,14 +46,16 @@ async def rate_limit_middleware(request: Request, call_next):
     elif int(rate) < RATE_LIMIT:
         await redis_client.incr(rate_key)
     else:
-        logger.warning(f"Rate limit exceeded for IP: {ip}")
+        logger.warning(f"Rate limit exceeded for anonymous UUID: {anonymous_uuid} on IP: {ip}")
         raise HTTPException(
             status_code=429, detail="Too many requests. Please try again later.")
 
     # ---- 2. Monthly quota check (before request work) ----
     usage_key = f"usage:{anonymous_uuid}"
     usage = await redis_client.get(usage_key)
-    
+
+    if (request.url.path.startswith("/api/recommendations")): # skip monthly quota check for recommendations
+        return await call_next(request)
 
     if usage is None:
         await redis_client.set(usage_key, 1, ex=MONTH_WINDOW)

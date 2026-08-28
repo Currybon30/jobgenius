@@ -13,14 +13,15 @@ class Location(BaseModel):
     city: str
     province: Optional[str] = None
     country: str
-    postal_code: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     remote: bool
 
 class Salary(BaseModel):
     job_salary_string: Optional[str] = None
     job_salary_min: Optional[int] = None
     job_salary_max: Optional[int] = None
-    job_salary_currency: Optional[str] = None
+    job_salary_currency: str = "CAD" # default to CAD for Canada
 
 class EmbeddingInfo(BaseModel):
     status: str = "pending"
@@ -29,18 +30,17 @@ class EmbeddingInfo(BaseModel):
 
 class Job(BaseModel):
     id: str # this comes from the id of the job retrieved from job APIs
-    source: str # JSearch API (canada) or Adzuna API (vietnam)
+    source: str = "JSearch API"
     title: str
     company: Company
     location: Location
+    apply_link: Optional[str] = None
     salary: Salary
     employment_type: Optional[str] = None
     job_description: Optional[str] = None
     skills: Optional[List[str]] = Field(default_factory=list)
     requirements: Optional[List[str]] = Field(default_factory=list)
     posted_at: Optional[datetime] = None
-    expires_at: Optional[datetime] = None
-    url: Optional[str] = None
     full_combined_text: Optional[str] = None
     embedding_info: Optional[EmbeddingInfo] = None
 

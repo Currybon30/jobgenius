@@ -18,6 +18,7 @@ from app.middlewares.logging import logging_middleware
 from app.middlewares.timing import timing_middleware
 from app.routes.resume_router import router as resume_router
 from app.routes.user_router import router as user_router
+from app.routes.job_recommender_router import router as job_recommender_router
 import asyncio
 
 setup_logging()
@@ -51,10 +52,6 @@ app.add_middleware(
     allow_headers=settings.CORS_ALLOW_HEADERS,
 )
 
-app.include_router(user_router)
-app.include_router(resume_router)
-
-
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
@@ -62,3 +59,7 @@ async def health_check():
 app.middleware("http")(logging_middleware)
 app.middleware("http")(rate_limit_middleware)
 app.middleware("http")(timing_middleware)
+
+app.include_router(user_router)
+app.include_router(resume_router)
+app.include_router(job_recommender_router)

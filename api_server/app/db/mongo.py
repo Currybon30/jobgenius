@@ -17,7 +17,7 @@ async def close_mongo():
     global mongo_client
     if mongo_client is not None:
         await mongo_client.close()
-        del mongo_client
+        mongo_client = None
         logger.info("Mongo client closed successfully")
 
 def get_mongo_client() -> AsyncMongoClient:

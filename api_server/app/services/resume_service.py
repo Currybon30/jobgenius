@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from bson import ObjectId
@@ -6,6 +7,7 @@ from app.core.config import settings
 from app.db.mongo import get_mongo_client
 from app.helpers.resume_helper import analyzer_result_to_text, format_analyzer_result
 from app.models.resume import Resume, ResumeForJobRecommendation
+from app.db.s3 import get_s3_client
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +20,7 @@ def _resume_to_mongo(resume: Resume) -> dict:
 
 async def store_resume_to_mongodb(user_id: int, resume, analyzed_result: dict):
     try:
+        s3_client = await get_s3_client()
         mongo_client = get_mongo_client()
         mongo_db = mongo_client[settings.MONGODB_NAME]
         resume_collection = mongo_db["resumes"]
@@ -33,12 +36,24 @@ async def store_resume_to_mongodb(user_id: int, resume, analyzed_result: dict):
         )
         next_version = (existing_resume["version"] + 1) if existing_resume else 1
 
+        await asyncio.to_thread(
+            s3_client.upload_file,
+            Filename=resume.filename,
+            Bucket=settings.S3_BUCKET_NAME,
+            Key=f"{user_id}/{resume.filename}/{next_version}.pdf",
+            ExtraArgs={
+                "ContentType": "application/pdf",
+                "ContentDisposition": "inline",
+            },
+        )
+
         new_resume = Resume(
             id=ObjectId(),
             user_id=user_id,
             resume_id=resume_id_generator,
             version=next_version,
             filename=resume.filename,
+            storage_path=f"{user_id}/{resume.filename}/{next_version}.pdf",
             analysis=formatted_result,
         )
         await resume_collection.insert_one(_resume_to_mongo(new_resume))

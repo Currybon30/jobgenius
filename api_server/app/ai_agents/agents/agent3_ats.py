@@ -1,11 +1,12 @@
 from app.services.resume_analyzer import has_metrics
 
 
-def ats_agent_free_tier(agent2_result: dict):
+def ats_agent_free_tier(resume_text: str, agent2_result: dict):
     """
     Calculate the resume quality score for free tier users.
     Total score: 1.0
     Args:
+        resume_text: The text of the resume.
         agent2_result: The result of the agent2 analyzer.
     Returns:
         A tuple containing the resume quality score (0.0 - 100.0), the necessary sections score (0.0 - 100.0), and the metrics score (0.0 - 1.0).
@@ -63,7 +64,7 @@ def ats_agent_free_tier(agent2_result: dict):
     # -------------------------
     # 2. Metrics (20%)
     # -------------------------
-    metrics_score = has_metrics(agent2_result["resume_text"])
+    metrics_score = has_metrics(resume_text)
     resume_score += metrics_score * 0.20
 
     # ------------------------------------
