@@ -54,7 +54,7 @@ async def search_jobs(query: str, country: str = "ca", language: str = "en", dat
     return data.get("jobs", [])
 
 
-async def store_jobs_to_mongodb(job_data, json_to_text: str, pinecone_id: Optional[str] = None, model: Optional[str] = None):
+async def _store_jobs_to_mongodb(job_data, json_to_text: str, pinecone_id: Optional[str] = None, model: Optional[str] = None):
     mongo_client = get_mongo_client()
     mongo_db = mongo_client[settings.MONGODB_NAME]
     jobs_collection = mongo_db["jobs"]
@@ -123,7 +123,7 @@ async def store_jobs_to_pinecone(data):
                 namespace="jobs",
             )
             try:
-                await store_jobs_to_mongodb(
+                await _store_jobs_to_mongodb(
                     job_data,
                     json_to_text,
                     pinecone_id,
