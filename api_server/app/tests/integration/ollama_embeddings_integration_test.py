@@ -1,6 +1,5 @@
 import pytest
 
-from app.core.ollama_config import close_ollama, init_ollama
 from app.helpers.embedding_helper import embed_text
 
 SAMPLE_TEXT = (
@@ -8,15 +7,8 @@ SAMPLE_TEXT = (
 )
 
 
-@pytest.fixture
-async def ollama():
-    await init_ollama()
-    yield
-    await close_ollama()
-
-
 @pytest.mark.asyncio
-async def test_embed_text_returns_vector(ollama):
+async def test_embed_text_returns_vector():
     embedding = await embed_text(SAMPLE_TEXT)
     print(embedding)
     assert isinstance(embedding, list)
@@ -25,7 +17,7 @@ async def test_embed_text_returns_vector(ollama):
 
 
 @pytest.mark.asyncio
-async def test_embed_text_same_input_same_dimension(ollama):
+async def test_embed_text_same_input_same_dimension():
     first = await embed_text(SAMPLE_TEXT)
     second = await embed_text(SAMPLE_TEXT)
 

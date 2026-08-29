@@ -1,22 +1,15 @@
 import pytest
 
 from app.ai_agents.free_tier_multiagents import build_free_tier_graph
-from app.core.ollama_config import close_ollama, init_ollama
 
 RESUME_TEXT_SAMPLE = """
 I am a software engineer with 5 years of experience in developing web applications using React, Node.js, and MongoDB. I have a strong understanding of the software development lifecycle and am able to work independently and as part of a team.
 """
 
 
-@pytest.fixture
-async def ollama():
-    await init_ollama()
-    yield
-    await close_ollama()
-
 
 @pytest.mark.asyncio
-async def test_free_tier_graph_ainvoke(ollama):
+async def test_free_tier_graph_ainvoke():
     graph = await build_free_tier_graph()
     state = {
         "resume_text": RESUME_TEXT_SAMPLE,
