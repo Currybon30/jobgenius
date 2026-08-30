@@ -3,6 +3,7 @@ from typing import Any, List
 
 from app.models.resume import ResumeAnalysis
 
+from app.internal_db.spoken_languages import SPOKEN_LANGUAGES, PROFICIENCY_LEVELS
 
 def normalize_text(text: str) -> str:
     return " ".join(text.lower().split())
@@ -14,6 +15,40 @@ def match_variants(text: str, variants: List[str]) -> bool:
         if re.search(pattern, text):
             return True
     return False
+
+_SPOKEN_LANGUAGES_BY_LENGTH = sorted(set(SPOKEN_LANGUAGES), key=len, reverse=True)
+_PROFICIENCY_LEVELS_BY_LENGTH = sorted(set(PROFICIENCY_LEVELS), key=len, reverse=True)
+
+def parse_proficiency_from_text(proficiency_text: str) -> str:
+    normalized = normalize_text(proficiency_text)
+    normalized = re.sub(r"\s+proficiency$", "", normalized).strip()
+    if not normalized:
+        return ""
+
+    for level in _PROFICIENCY_LEVELS_BY_LENGTH:
+        if match_variants(normalized, [level]):
+            return level
+    return ""
+
+
+def split_language_and_proficiency(token: str) -> tuple[str | None, str]:
+    """
+    Match a known language at the start of the token and return the remainder
+    as raw proficiency text. Works with any separator (dash, colon, spaces, etc.)
+    because normalize_text collapses whitespace first.
+    """
+    normalized_token = normalize_text(token)
+    for language in _SPOKEN_LANGUAGES_BY_LENGTH:
+        match = re.match(rf"^{re.escape(language)}\b\s*(.*)$", normalized_token, re.IGNORECASE)
+        if not match:
+            continue
+
+        remainder = match.group(1).strip()
+        remainder = re.sub(r"^[\(\[\-:–—\|]+\s*", "", remainder).strip()
+        remainder = re.sub(r"[\)\]]+\s*$", "", remainder).strip()
+        return language.title(), remainder
+
+    return None, ""
 
 
 def _as_dict(value: Any) -> dict:
@@ -48,6 +83,7 @@ def _section_names(sections: Any) -> list[str]:
     if isinstance(sections, dict):
         return [name for name, content in sections.items() if name and str(content).strip()]
     return _as_list(sections)
+
 
 
 def format_analyzer_result(result: dict) -> dict:
@@ -106,6 +142,17 @@ def format_analyzer_result(result: dict) -> dict:
         experience_feedback=str(feedback.get("experience_feedback") or ""),
         structure_feedback=str(feedback.get("structure_feedback") or ""),
         simple_suggestions=_as_list(feedback.get("simple_suggestions")),
+        strength_highlights=_as_list(feedback.get("strength_highlights")),
+        growth_opportunities=_as_list(feedback.get("growth_opportunities")),
+        jd_fit_analysis=str(feedback.get("jd_fit_analysis") or ""),
+        certifications_feedback=str(feedback.get("certifications_feedback") or ""),
+        languages_feedback=str(feedback.get("languages_feedback") or ""),
+        professional_links_feedback=str(feedback.get("professional_links_feedback") or ""),
+        optimizer_review=str(feedback.get("optimizer_review") or ""),
+        interview_talking_points=_as_list(feedback.get("interview_talking_points")),
+        priority_action_plan=_as_list(feedback.get("priority_action_plan")),
+        recruiter_lens=str(feedback.get("recruiter_lens") or ""),
+        competitive_positioning=str(feedback.get("competitive_positioning") or ""),
     )
 
     return analysis.model_dump(mode="json")
@@ -139,6 +186,9 @@ def analyzer_result_to_text(result: dict) -> str:
         feedback.get("summary"),
         feedback.get("skills_feedback"),
         feedback.get("experience_feedback"),
+        feedback.get("jd_fit_analysis"),
+        feedback.get("competitive_positioning"),
+        feedback.get("optimizer_review"),
         optimizer.get("optimized_resume"),
     ]
 

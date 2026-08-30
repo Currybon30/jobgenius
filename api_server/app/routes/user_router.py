@@ -17,7 +17,7 @@ router = APIRouter(tags=["users"])
 logger = logging.getLogger(__name__)
 
 @router.get("/api/users/me", response_model=UserResponse)
-def get_current_user_info(current_user: Annotated[User, Depends(get_current_user)]):
+def get_current_user_info(current_user: Annotated[UserResponse, Depends(get_current_user)]):
     if not current_user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
@@ -25,11 +25,11 @@ def get_current_user_info(current_user: Annotated[User, Depends(get_current_user
 
 # Query user info by user_id, only accessible by the user themselves
 @router.get("/api/users/{user_id}", response_model=UserResponse)
-def get_user_info(user_id: int, current_user: Annotated[User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+def get_user_info(user_id: int, current_user: Annotated[UserResponse, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
     if not current_user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
-    if not is_owner(user_id, current_user.uid):
+    if not is_owner(user_id, current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
     user = get_user_by_id(db, user_id)

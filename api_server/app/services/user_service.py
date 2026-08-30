@@ -4,7 +4,7 @@ from datetime import datetime
 from app.auth.dependencies import get_current_user_id
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.user import UserPlanUpdate, UserResponse
+from app.schemas.user import PlanEnum, UserPlanUpdate, UserResponse
 from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -31,7 +31,7 @@ def get_current_user(db: Session = Depends(get_db), user_id: int = Depends(get_c
     if not user:
         logger.warning(f"User with ID {user_id} not found")
         return None
-    return user
+    return UserResponse(uid=user.uid, plan=PlanEnum(user.plan.upper() if user.plan else "FREE"), plan_expiry=user.plan_expiry)
 
 
 def update_user_plan(user_id: int, data: UserPlanUpdate, db: Session = Depends(get_db)):

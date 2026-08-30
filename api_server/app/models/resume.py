@@ -48,6 +48,18 @@ class ResumeAnalysis(BaseModel):
     experience_feedback: str
     structure_feedback: str
     simple_suggestions: List[str]
+    # Premium finalizer extras (empty/default for free tier)
+    strength_highlights: List[str] = Field(default_factory=list)
+    growth_opportunities: List[str] = Field(default_factory=list)
+    jd_fit_analysis: str = ""
+    certifications_feedback: str = ""
+    languages_feedback: str = ""
+    professional_links_feedback: str = ""
+    optimizer_review: str = ""
+    interview_talking_points: List[str] = Field(default_factory=list)
+    priority_action_plan: List[str] = Field(default_factory=list)
+    recruiter_lens: str = ""
+    competitive_positioning: str = ""
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

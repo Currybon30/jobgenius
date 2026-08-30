@@ -1,12 +1,13 @@
+from typing import Annotated
 from app.auth.dependencies import get_current_user_id
 from app.core.config import settings
-from app.services.user_service import get_db, get_user_by_id
+from app.schemas.user import PlanEnum, UserResponse
+from app.services.user_service import get_current_user, get_db, get_user_by_id
 from fastapi import Depends, Header, HTTPException, Request, status
-from sqlalchemy.orm import Session
 
 
-def is_owner(user_id: int, current_user_id: int = Depends(get_current_user_id)):
-    if user_id != current_user_id:
+def is_owner(user_id: int, current_user: Annotated[UserResponse, Depends(get_current_user)]):
+    if current_user.uid != user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have permission to perform this action."
@@ -19,11 +20,7 @@ def verify_api_key(x_api_key: str = Header(...)):
         raise HTTPException(status_code=401, detail="Invalid API Key")
 
 
-def is_premium_user(user_id: int, db: Session = Depends(get_db)):
-    user = get_user_by_id(db, user_id)
-    if not user or user.plan != "PREMIUM":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="This action is only available to PREMIUM users."
-        )
+def is_premium_user(current_user: Annotated[UserResponse, Depends(get_current_user)]):
+    if not current_user or current_user.plan != PlanEnum.PREMIUM:
+        return False
     return True

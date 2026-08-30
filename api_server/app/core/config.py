@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     # ⚡ Redis
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
+    REDIS_ARQ_DB: int = 1  # cache/rate-limit can stay on db=0
 
     # 🛢 Localstack S3
     LOCALSTACK_HOST: str = "http://localhost:4566"

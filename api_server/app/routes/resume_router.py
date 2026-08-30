@@ -5,6 +5,8 @@ from fastapi import (APIRouter, Body, Depends, File, Header, HTTPException,
                      UploadFile, status, Cookie, Form, BackgroundTasks)
 from fastapi.responses import JSONResponse
 
+from app.auth.dependencies import get_current_user_id
+from app.helpers.auth_helper import is_premium_user
 from app.middlewares.limit import increment_monthly_usage
 from app.ai_agents.free_tier_multiagents import build_free_tier_graph
 from app.services.resume_analyzer import *
@@ -53,20 +55,29 @@ async def analyze_resume_premium(
     resume_pdf: Annotated[UploadFile, File(...)], # required
     jd_text: Annotated[str, Form()] = "", # optional
     user_goal: Annotated[str, Form()] = "", # optional
-    anonymous_uuid: Annotated[str | None, Cookie()] = None
+    includes_job_finder: Annotated[bool, Form()] = False, # optional
+    is_premium_user: Annotated[bool, Depends(is_premium_user)] = False,
+    current_user_id: Annotated[int, Depends(get_current_user_id)] = None,
 ):
     """
     Analyze the resume for premium users
     Description:
     - Work the same as the free tier analyzer, but with more advanced features
     - Store the resume to MongoDB in the background
-    Parameters:
+    System parameters:
+    - background_tasks: The background tasks from FastAPI to store resume to MongoDB, S3
+    - current_user_id: The ID of the current user, to track the usage
+    - is_premium_user: Whether the current user is a premium user
+    Must have parameters from client:
     - resume_pdf: The resume PDF file
     - jd_text: The job description text
     - user_goal: The user's goal
-    - anonymous_uuid: The anonymous UUID of the user
-    - background_tasks: The background tasks
+    - includes_job_finder: Whether to include the job finder
     Returns:
     - The analysis result in JSON format
     """
-    pass
+    if not is_premium_user:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This action is only available to PREMIUM users."
+        )

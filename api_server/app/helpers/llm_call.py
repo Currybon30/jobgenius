@@ -17,7 +17,7 @@ async def llm_call(prompt: str):
             base_url=settings.OLLAMA_HOST,
         )
         response = await client.ainvoke(prompt)
-        return response.response
+        return response
     except asyncio.TimeoutError:
         logger.error("[ERROR] LLM call timed out")
         return ""
@@ -75,3 +75,7 @@ def safe_parse(response: str, agent_name="unknown"):
         "agent": agent_name,
         "raw": response
     }
+
+
+def agent7_jobfinder_format_result(result: dict):
+    pass

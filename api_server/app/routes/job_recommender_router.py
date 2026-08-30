@@ -1,8 +1,10 @@
 import hashlib
 import json
 import logging
+from typing import Annotated
 from fastapi import (
     APIRouter,
+    Depends,
     Request,
     Body,
     Query,
@@ -59,5 +61,5 @@ async def get_job_recommendations_free_user(background_tasks: BackgroundTasks, r
     pass
 
 @router.get("/recommendations/premium")
-async def get_job_recommendations_premium_user(background_tasks: BackgroundTasks, request: Request):
+async def get_job_recommendations_premium_user(background_tasks: BackgroundTasks, request: Request, is_premium_user: Annotated[bool, Depends(is_premium_user)] = False):
     pass

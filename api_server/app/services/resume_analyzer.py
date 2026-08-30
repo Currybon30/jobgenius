@@ -3,12 +3,34 @@ import re
 from datetime import datetime
 
 import pymupdf
-from app.helpers.resume_helper import match_variants, normalize_text
+from app.helpers.resume_helper import match_variants, normalize_text, parse_proficiency_from_text, split_language_and_proficiency
 from app.internal_db.skills import (BUSINESS_SKILL_NORMALIZATION,
                                     IT_SKILL_NORMALIZATION,
                                     SOFT_SKILL_NORMALIZATION)
 from app.services.jd import extract_skills_from_jd_text
 from fastapi import UploadFile
+
+
+_HTTP_URL_PATTERN = re.compile(r"https?://[^\s<>\"'\)\],]+", re.IGNORECASE)
+_BARE_PROFILE_URL_PATTERN = re.compile(
+    r"(?:www\.)?(?:"
+    r"linkedin\.com/(?:in|pub|company)/[\w\-_%]+|"
+    r"github\.com/[\w\-]+|"
+    r"gitlab\.com/[\w\-/]+"
+    r")",
+    re.IGNORECASE,
+)
+_EXCLUDED_PORTFOLIO_DOMAINS = (
+    "linkedin.com",
+    "github.com",
+    "gitlab.com",
+    "twitter.com",
+    "x.com",
+    "facebook.com",
+    "instagram.com",
+    "youtube.com",
+    "mailto",
+)
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +130,7 @@ def extract_sections_from_text(text: str):
         "projects": r'^\s*(projects|project experience)\b',
         "certifications": r'^\s*(certifications|certification|courses|training|qualifications|credentials|licenses)\b',
         "languages": r'^\s*(languages|language skills)\b',
+        "volunteer": r'^\s*(volunteer|volunteering|volunteer experience|community service|community involvement)\b',
     }
 
     matches = []
@@ -143,6 +166,151 @@ def extract_contact_info(text: str):
         "phone_numbers": phones
     }
 
+def extract_certifications(certifications_text: str) -> list[str]:
+    """
+    Extract certifications from the certifications section content
+    returned by extract_sections_from_text.
+    For premium users only.
+    """
+    if not certifications_text or not certifications_text.strip():
+        return []
+
+    certifications = []
+    seen = set()
+    for index, raw_line in enumerate(re.split(r"[\r\n]+", certifications_text.strip())):
+        line = re.sub(r"^\s*(?:[-•*●+]|\d+[.)])\s*", "", raw_line.strip())
+        line = re.sub(r"\s{2,}", " ", line).strip(" ,;")
+        if not line or re.fullmatch(r"\d{4}", line):
+            continue
+        if index == 0 and re.match(
+            r"^\s*(certifications|certification|courses|training|qualifications|credentials|licenses)\b",
+            line,
+            re.IGNORECASE,
+        ):
+            continue
+
+        cleaned = re.sub(
+            r"\s*[\(\[]?\s*(?:issued|exp(?:ires)?)?[:\s]*\d{4}.*$",
+            "",
+            line,
+            flags=re.IGNORECASE,
+        ).strip()
+        cleaned = re.sub(r"\s*[-–—]\s*\d{4}.*$", "", cleaned).strip()
+        if len(cleaned) < 2:
+            continue
+
+        key = cleaned.lower()
+        if key not in seen:
+            seen.add(key)
+            certifications.append(cleaned)
+
+    return certifications
+
+
+
+def extract_languages(languages_text: str) -> list[dict[str, str]]:
+    """
+    Extract languages from the languages section content
+    returned by extract_sections_from_text.
+    For premium users only.
+
+    Returns:
+        List of {"language": str, "proficiency": str} dicts.
+        Only languages present in the internal database are returned.
+    """
+    if not languages_text or not languages_text.strip():
+        return []
+
+    languages = []
+    seen = set()
+
+    for index, raw_line in enumerate(re.split(r"[\r\n]+", languages_text.strip())):
+        line = re.sub(r"^\s*(?:[-•*●+]|\d+[.)])\s*", "", raw_line.strip())
+        line = re.sub(r"\s{2,}", " ", line).strip(" ,;")
+        if not line:
+            continue
+        if index == 0 and re.match(r"^\s*(languages|language skills)\b", line, re.IGNORECASE):
+            continue
+
+        parts = re.split(r"[,;]|\band\b", line, flags=re.IGNORECASE) if re.search(r"[,;]|\band\b", line, re.IGNORECASE) else [line]
+        for part in parts:
+            token = part.strip(" ,;")
+            if not token:
+                continue
+
+            matched_language, proficiency_text = split_language_and_proficiency(token)
+            if not matched_language:
+                continue
+
+            proficiency = parse_proficiency_from_text(proficiency_text)
+
+            key = (matched_language.lower(), proficiency)
+            if key not in seen:
+                seen.add(key)
+                languages.append({"language": matched_language, "proficiency": proficiency})
+
+    return languages
+
+def extract_professional_links(text: str) -> dict[str, str | list[str] | None]:
+    """
+    Extract professional profile links from resume text.
+    For premium users only.
+
+    Returns:
+        Dict with linkedin, github, gitlab, portfolio, and other link fields.
+    """
+    result: dict[str, str | list[str] | None] = {
+        "linkedin": None,
+        "github": None,
+        "gitlab": None,
+        "portfolio": None,
+        "other": [],
+    }
+    if not text or not text.strip():
+        return result
+
+    found_urls: list[str] = []
+    seen_urls = set()
+
+    for match in _HTTP_URL_PATTERN.findall(text):
+        url = match.strip().rstrip(".,;:)")
+        if url and url not in seen_urls:
+            seen_urls.add(url)
+            found_urls.append(url)
+
+    for match in _BARE_PROFILE_URL_PATTERN.findall(text):
+        url = f"https://{match.strip().rstrip('.,;:)')}"
+        if url not in seen_urls:
+            seen_urls.add(url)
+            found_urls.append(url)
+
+    other_links: list[str] = []
+    for url in found_urls:
+        normalized = url if url.lower().startswith(("http://", "https://")) else f"https://{url}"
+        lowered = normalized.lower()
+
+        if "linkedin.com" in lowered:
+            if result["linkedin"] is None:
+                result["linkedin"] = normalized
+            continue
+        if "github.com" in lowered:
+            if result["github"] is None:
+                result["github"] = normalized
+            continue
+        if "gitlab.com" in lowered:
+            if result["gitlab"] is None:
+                result["gitlab"] = normalized
+            continue
+        if any(domain in lowered for domain in _EXCLUDED_PORTFOLIO_DOMAINS):
+            continue
+        if result["portfolio"] is None:
+            result["portfolio"] = normalized
+        else:
+            other_links.append(normalized)
+
+    result["other"] = other_links
+    return result
+
 ############################### RULE-BASED ANALYSIS ################################
 def __estimate_experience_years(text: str):
     total_years = 0
@@ -175,7 +343,6 @@ def estimate_experience_years_from_sections(sections: dict):
     return __estimate_experience_years(text)
 
 
-# Optional sections like certifications, languages detected in the resume is a plus
 def has_metrics(text: str):
     # Check for presence of numbers that could indicate metrics in the experience section and/or projects section
     sections = extract_sections_from_text(text)

@@ -13,7 +13,7 @@ class PlanEnum(str, Enum):
 # 🔹 Response (what API returns)
 class UserResponse(BaseModel):
     uid: int
-    plan: str
+    plan: PlanEnum
     plan_expiry: Optional[datetime] = None
 
     class Config:
