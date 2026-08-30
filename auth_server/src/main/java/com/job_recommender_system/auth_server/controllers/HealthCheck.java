@@ -1,8 +1,6 @@
 package com.job_recommender_system.auth_server.controllers;
 
-import java.util.Objects;
-import java.util.UUID;
-
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -11,10 +9,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.servlet.http.HttpServletResponse;
+import java.util.Objects;
+import java.util.UUID;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping()
 public class HealthCheck {
     @GetMapping("/health")
     public ResponseEntity<String> healthCheck() {
