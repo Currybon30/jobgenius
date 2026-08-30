@@ -27,8 +27,8 @@ def _json_block(data: Any) -> str:
 
 async def optimizer_agent(
     resume_text: str,
-    jd_text: Optional[str] = None,
-    user_goal: Optional[str] = None,
+    jd_text: Optional[str] = "",
+    user_goal: Optional[str] = "",
     intent_agent_response: Optional[dict] = None,
     analyzer_agent_response: Optional[dict] = None,
     ats_agent_response: Optional[dict] = None,
@@ -47,12 +47,10 @@ async def optimizer_agent(
     analyzer = analyzer_agent_response or {}
     ats = ats_agent_response or {}
 
-    if not user_goal:
+    if user_goal == "":
         user_goal = "No specific goal provided."
-    if not jd_text:
-        jd_text = analyzer.get("jd_text") or ""
-
-    jd_provided = bool(analyzer.get("jd_provided") or (jd_text and jd_text.strip()))
+    if jd_text == "":
+        jd_text = "No job description provided."
 
     target_role = intent.get("target_role", "")
     seniority_level = intent.get("seniority_level", "")
@@ -91,10 +89,10 @@ async def optimizer_agent(
     hard_match_ats = ats.get("hard_skills_score")
     soft_match_ats = ats.get("soft_skills_score")
 
-    if jd_provided:
+    if jd_text != "No job description provided.":
         jd_block = f"""
             === JOB DESCRIPTION ===
-            {jd_text[:2500]}
+            {jd_text}
 
             === AGENT 2 — JD SKILL MATCH ===
             Hard skills on resume: {_json_block(hard_skills)}

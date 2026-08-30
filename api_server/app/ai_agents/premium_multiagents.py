@@ -1,0 +1,120 @@
+from typing import Any, Literal, Optional, TypedDict
+
+from app.ai_agents.agents.agent1_intent import intent_goal_agent
+from app.ai_agents.agents.agent2_analyzer import analyzer_agent_premium
+from app.ai_agents.agents.agent3_ats import ats_agent_premium
+from app.ai_agents.agents.agent4_optimizer import optimizer_agent
+from app.ai_agents.agents.agent6_finalizer import finalizer_agent_premium
+from app.ai_agents.agents.agent7_jobfinder import jobfinder_agent
+from langgraph.graph import END, START, StateGraph
+
+
+class GraphState(TypedDict):
+    # User input states
+    resume_text: str
+    jd_text: Optional[str]
+    user_goal: Optional[str]
+    includes_job_finder: bool = False # This job finder has a quota limit of 3 calls per 15 days
+
+    # Agent output states
+    intent: dict[str, Any] | Any
+    analyzer: dict[str, Any]
+    ats: dict[str, Any]
+    optimizer: dict[str, Any]
+    feedback: dict[str, Any] | str
+    job_finder: list[dict[str, Any]] | Any | None
+
+async def agent1_node(state: GraphState) -> dict[str, Any]:
+    intent = await intent_goal_agent(
+        state["resume_text"],
+        state.get("jd_text") or "",
+        state.get("user_goal") or "",
+    )
+    return {"intent": intent}
+
+async def agent2_node(state: GraphState) -> dict[str, Any]:
+    industry = state.get("intent", {}).get("industry")
+    if not isinstance(industry, str):
+        industry = ""
+    analyzer = await analyzer_agent_premium(
+        state["resume_text"],
+        industry,
+        state.get("jd_text") or "",
+    )
+    return {"analyzer": analyzer}
+
+async def agent3_node(state: GraphState) -> dict[str, Any]:
+    ats = await ats_agent_premium(
+        state["resume_text"],
+        state["analyzer"],
+        state.get("jd_text") or "",
+    )
+    return {"ats": ats}
+
+async def agent4_node(state: GraphState) -> dict[str, Any]:
+    optimizer = await optimizer_agent(
+        state["resume_text"],
+        state.get("jd_text") or "",
+        state.get("user_goal") or "",
+        state.get("intent") or {},
+        state.get("analyzer") or {},
+        state.get("ats") or {},
+    )
+    return {"optimizer": optimizer}
+
+async def agent6_node(state: GraphState) -> dict[str, Any]:
+    feedback = await finalizer_agent_premium(
+        state["resume_text"],
+        state.get("intent") or {},
+        state.get("analyzer") or {},
+        state.get("ats") or {},
+        state.get("optimizer") or {},
+        state.get("jd_text") or "",
+        state.get("user_goal") or "",
+    )
+    return {"feedback": feedback}
+
+
+async def agent7_node(state: GraphState) -> dict[str, Any]:
+    analyzed_results_dict = {
+        "intent": state.get("intent") or {},
+        "analyzer": state.get("analyzer") or {},
+        "ats": state.get("ats") or {},
+        "optimizer": state.get("optimizer") or {},
+    }
+    job_finder = await jobfinder_agent(
+        state["resume_text"],
+        analyzed_results_dict
+    )
+    return {"job_finder": job_finder}
+
+def includes_job_finder_edge(state: GraphState) -> Literal["agent7_jobfinder", "end"]:
+    if state.get("includes_job_finder") or False:
+        return "agent7_jobfinder"
+    else:
+        return "end"
+
+
+async def build_premium_graph():
+    graph = StateGraph(GraphState)
+    graph.add_node("agent1_intent", agent1_node)
+    graph.add_node("agent2_analyzer", agent2_node)
+    graph.add_node("agent3_ats", agent3_node)
+    graph.add_node("agent4_optimizer", agent4_node)
+    graph.add_node("agent6_finalizer", agent6_node)
+    graph.add_node("agent7_jobfinder", agent7_node)
+    graph.add_edge(START, "agent1_intent")
+    graph.add_edge("agent1_intent", "agent2_analyzer")
+    graph.add_edge("agent2_analyzer", "agent3_ats")
+    graph.add_edge("agent3_ats", "agent4_optimizer")
+    graph.add_edge("agent4_optimizer", "agent6_finalizer")
+    graph.add_conditional_edges(
+        "agent6_finalizer",
+        includes_job_finder_edge,
+        {
+            "agent7_jobfinder": "agent7_jobfinder",
+            "end": END,
+        }
+    )
+    graph.add_edge("agent7_jobfinder", END)
+    return graph.compile()

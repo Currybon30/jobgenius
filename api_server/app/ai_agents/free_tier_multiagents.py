@@ -23,8 +23,8 @@ class GraphState(TypedDict):
 async def agent1_node(state: GraphState) -> dict[str, Any]:
     intent = await intent_goal_agent(
         state["resume_text"],
-        state.get("jd_text"),
-        state.get("user_goal"),
+        state.get("jd_text") or "",
+        state.get("user_goal") or "",
     )
     return {"intent": intent}
 
@@ -42,7 +42,7 @@ async def agent2_node(state: GraphState) -> dict[str, Any]:
 
 
 async def agent3_node(state: GraphState) -> dict[str, Any]:
-    ats = ats_agent_free_tier(state["resume_text"], state["analyzer"])
+    ats = ats_agent_free_tier(state["resume_text"], state["analyzer"], state.get("jd_text") or "")
     return {"ats": ats}
 
 
@@ -52,7 +52,8 @@ async def agent6_node(state: GraphState) -> dict[str, Any]:
         intent=state.get("intent") or {},
         analyzer=state.get("analyzer") or {},
         ats=state.get("ats") or {},
-        user_goal=state.get("user_goal"),
+        jd_text=state.get("jd_text") or "",
+        user_goal=state.get("user_goal") or "",
     )
     return {"feedback": feedback}
 

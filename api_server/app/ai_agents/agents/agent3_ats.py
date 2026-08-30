@@ -1,13 +1,15 @@
+from typing import Optional
 from app.services.resume_analyzer import has_metrics
 
 
-def ats_agent_free_tier(resume_text: str, agent2_result: dict):
+def ats_agent_free_tier(resume_text: str, agent2_result: dict, jd_text: Optional[str] = ""):
     """
     Calculate the resume quality score for free tier users.
     Total score: 1.0
     Args:
         resume_text: The text of the resume.
         agent2_result: The result of the agent2 analyzer.
+        jd_text: The text of the job description.
     Returns:
         A tuple containing the resume quality score (0.0 - 100.0), the necessary sections score (0.0 - 100.0), and the metrics score (0.0 - 1.0).
     """
@@ -141,7 +143,7 @@ def ats_agent_free_tier(resume_text: str, agent2_result: dict):
     
 
     ats_score = 0
-    if agent2_result["jd_provided"]:
+    if jd_text != "":
         hard_skills_score = agent2_result["matching_hard_skills_score"]
         soft_skills_score = agent2_result["matching_soft_skills_score"]
 
@@ -156,4 +158,50 @@ def ats_agent_free_tier(resume_text: str, agent2_result: dict):
         results["hard_skills_score"] = round(hard_skills_score * 100, 2)
         results["soft_skills_score"] = round(soft_skills_score * 100, 2)
 
+    return results
+
+
+def ats_agent_premium(resume_text: str, agent2_result: dict, jd_text: Optional[str] = ""):
+    """
+    Calculate the resume quality score for premium users.
+    Premium users have access to all the features of the free tier, plus:
+    - Certifications
+    - Languages
+    - Professional links
+    - Volunteer section (a plus if no experience section and relevant to the resume title and/or job description)
+    These features are returned by the agent2 analyzer (premium version)
+    These plus features are bonus points for the ATS score
+    Total score: 1.0 + bonus points
+    Args:
+        resume_text: The text of the resume.
+        agent2_result: The result of the agent2 analyzer.
+        jd_text: The text of the job description.
+    Returns:
+        A tuple containing the resume quality score (0.0 - 100.0), the necessary sections score (0.0 - 100.0), and the metrics score (0.0 - 1.0).
+    """
+    results = ats_agent_free_tier(resume_text, agent2_result, jd_text)
+    results["certifications_score"] = 0
+    results["languages_score"] = 0
+    results["professional_links_score"] = 0
+    results["volunteer_score"] = 0
+
+    list_of_certifications = agent2_result["certifications"]
+    certifications_score = len(list_of_certifications) * 0.1 if len(list_of_certifications) > 0 else 0
+    results["certifications_score"] = certifications_score
+
+    list_of_languages = agent2_result["languages"]
+    languages_score = len(list_of_languages) * 0.1 if len(list_of_languages) > 0 else 0
+    results["languages_score"] = languages_score
+
+    list_of_professional_links = agent2_result["professional_links"]
+    professional_links_score = len(list_of_professional_links) * 0.1 if len(list_of_professional_links) > 0 else 0
+    results["professional_links_score"] = professional_links_score
+
+    if agent2_result["has_volunteer"]:
+        volunteer_score = 0.25
+    else:
+        volunteer_score = 0
+    results["volunteer_score"] = volunteer_score
+
+    results["ats_score"] = results["ats_score"] + certifications_score + languages_score + professional_links_score + volunteer_score
     return results

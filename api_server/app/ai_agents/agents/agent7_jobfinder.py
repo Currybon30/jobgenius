@@ -1,13 +1,16 @@
 import json
-from fastapi import BackgroundTasks
 from langchain_core.messages import ToolMessage
 from langchain_mcp_adapters.client import MultiServerMCPClient 
 from langchain_ollama import ChatOllama
 from app.services.job_service import store_jobs_to_pinecone
 from langchain.agents import create_agent
 from app.core.config import settings
+import asyncio
+from typing import Set
 
-async def jobfinder_agent(background_tasks: BackgroundTasks, resume_text: str, analyzed_results_dict: dict = None, user_requirements: str = ""):
+background_tasks: Set[asyncio.Task] = set()
+
+async def jobfinder_agent(resume_text: str, analyzed_results_dict: dict = None, user_requirements: str = ""):
     mcp_client = MultiServerMCPClient({
     "job_service": {
         "command": "python",
@@ -66,12 +69,16 @@ async def jobfinder_agent(background_tasks: BackgroundTasks, resume_text: str, a
     for msg in result["messages"]:
         if isinstance(msg, ToolMessage):
             if isinstance(msg.content, list):
-                background_tasks.add_task(store_jobs_to_pinecone, msg.content)
+                task = asyncio.create_task(store_jobs_to_pinecone(msg.content))
+                background_tasks.add(task)
+                task.add_done_callback(background_tasks.discard)
             else:
                 jobs = []
                 parsed = json.loads(msg.content) if isinstance(msg.content, str) else msg.content
                 jobs.extend(parsed)
-                background_tasks.add_task(store_jobs_to_pinecone, jobs)
+                task = asyncio.create_task(store_jobs_to_pinecone(jobs))
+                background_tasks.add(task)
+                task.add_done_callback(background_tasks.discard)
 
     messages.append({
         "role": "assistant",

@@ -1,14 +1,15 @@
 import logging
+from typing import Optional
 
 from app.helpers.llm_call import llm_call, safe_parse
 
 logger = logging.getLogger(__name__)
 
 
-async def intent_goal_agent(resume_text, jd_text=None, user_goal=None):
-    if jd_text is None or jd_text == "":
+async def intent_goal_agent(resume_text, jd_text: Optional[str] = "", user_goal: Optional[str] = ""):
+    if jd_text == "":
         jd_text = "No job description provided."
-    if user_goal is None or user_goal == "":
+    if user_goal == "":
         user_goal = "No specific goal provided."
     prompt = f"""
     You are an expert career advisor.
