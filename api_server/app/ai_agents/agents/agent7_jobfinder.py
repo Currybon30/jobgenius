@@ -2,13 +2,9 @@ import json
 from langchain_core.messages import ToolMessage
 from langchain_mcp_adapters.client import MultiServerMCPClient 
 from langchain_ollama import ChatOllama
-from app.services.job_service import store_jobs_to_pinecone
 from langchain.agents import create_agent
 from app.core.config import settings
-import asyncio
-from typing import Set
-
-background_tasks: Set[asyncio.Task] = set()
+from app.helpers.job_indexing import index_jobs_in_background
 
 async def jobfinder_agent(resume_text: str, analyzed_results_dict: dict = None, user_requirements: str = ""):
     mcp_client = MultiServerMCPClient({
@@ -66,20 +62,20 @@ async def jobfinder_agent(resume_text: str, analyzed_results_dict: dict = None, 
         "messages": messages
     })
 
+    raw_jobs = None
+
     for msg in result["messages"]:
         if isinstance(msg, ToolMessage):
             if isinstance(msg.content, list):
-                task = asyncio.create_task(store_jobs_to_pinecone(msg.content))
-                background_tasks.add(task)
-                task.add_done_callback(background_tasks.discard)
+                jobs = msg.content
+                raw_jobs = jobs
+                await index_jobs_in_background(jobs)
             else:
-                jobs = []
                 parsed = json.loads(msg.content) if isinstance(msg.content, str) else msg.content
-                jobs.extend(parsed)
-                task = asyncio.create_task(store_jobs_to_pinecone(jobs))
-                background_tasks.add(task)
-                task.add_done_callback(background_tasks.discard)
-
+                jobs = parsed if isinstance(parsed, list) else [parsed]
+                raw_jobs = jobs
+                await index_jobs_in_background(jobs)
+    
     messages.append({
         "role": "assistant",
         "content": result["messages"][-1].content
@@ -103,4 +99,26 @@ async def jobfinder_agent(resume_text: str, analyzed_results_dict: dict = None, 
         "content": result["messages"][-1].content
     })
 
-    return messages
+    return messages, raw_jobs
+
+# if __name__ == "__main__":
+#     import asyncio
+#     resume_text = """
+#     I am a software engineer with 5 years of experience in Python and Django. I have a passion for building web applications and I am looking for a new challenge.
+#     """
+#     analyzed_results_dict = {
+#         "skills": ["Python", "Django", "JavaScript", "React", "SQL"],
+#         "experience": "5 years",
+#         "education": "Bachelor of Science in Computer Science",
+#         "location": "San Francisco, CA",
+#         "job_type": "Full-time",
+#         "job_category": "Software Engineering",
+#     }
+#     messages, raw_jobs = asyncio.run(jobfinder_agent(resume_text=resume_text, analyzed_results_dict=analyzed_results_dict))
+#     print_results = ""
+#     for msg in messages:
+#         print_results += msg["role"] + ": " + msg["content"] + "\n"
+#     print(raw_jobs)
+
+#     with open("jobfinder_results.txt", "w") as f:
+#         f.write(print_results)

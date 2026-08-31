@@ -85,9 +85,13 @@ async def optimizer_agent(
     skills_quality_score = _pct(ats.get("skills_quality_score", 0))
     summary_quality_score = _pct(ats.get("summary_quality_score", 0))
     formatting_score = _pct(ats.get("formatting_score", 0))
-    ats_score = ats.get("ats_score")
-    hard_match_ats = ats.get("hard_skills_score")
-    soft_match_ats = ats.get("soft_skills_score")
+    ats_score = ats.get("ats_score", 0)
+    hard_match_ats = ats.get("hard_skills_score", 0)
+    soft_match_ats = ats.get("soft_skills_score", 0)
+    certifications_score = ats.get("certifications_score", 0)
+    languages_score = ats.get("languages_score", 0)
+    professional_links_score = ats.get("professional_links_score", 0)
+    volunteer_score = ats.get("volunteer_score", 0)
 
     if jd_text != "No job description provided.":
         jd_block = f"""
@@ -112,6 +116,11 @@ async def optimizer_agent(
             - ATS Fit Score: {ats_score if ats_score is not None else "N/A"}%
             - Hard Skills Match (ATS): {hard_match_ats if hard_match_ats is not None else "N/A"}%
             - Soft Skills Match (ATS): {soft_match_ats if soft_match_ats is not None else "N/A"}%
+            Optional Scores:
+            - Certifications Score: {certifications_score}%
+            - Languages Score: {languages_score}%
+            - Professional Links Score: {professional_links_score}%
+            - Volunteer Score: {volunteer_score}%
             """
     else:
         jd_block = f"""
@@ -130,6 +139,11 @@ async def optimizer_agent(
             - Skills Quality Score: {skills_quality_score}%
             - Summary Quality Score: {summary_quality_score}%
             - Formatting Score: {formatting_score}%
+            Optional Scores:
+            - Certifications Score: {certifications_score}%
+            - Languages Score: {languages_score}%
+            - Professional Links Score: {professional_links_score}%
+            - Volunteer Score: {volunteer_score}%
             """
 
     prompt = f"""

@@ -74,8 +74,8 @@ def analyzer_agent_premium(resume_text, industry: str = "", jd_text: Optional[st
         results[key] = value
     sections = extract_sections_from_text(resume_text)
     has_volunteer_bool = True if "volunteer" in sections else False
-    results["certifications"] = extract_certifications(sections["certifications"])
-    results["languages"] = extract_languages(sections["languages"])
+    results["certifications"] = extract_certifications(sections.get("certifications", ""))
+    results["languages"] = extract_languages(sections.get("languages", ""))
     results["professional_links"] = extract_professional_links(resume_text)
     if results["has_experience"] == False and results["has_projects"] == False and has_volunteer_bool:
         results["has_volunteer"] = True

@@ -8,6 +8,8 @@ from app.ai_agents.agents.agent6_finalizer import finalizer_agent_premium
 from app.ai_agents.agents.agent7_jobfinder import jobfinder_agent
 from langgraph.graph import END, START, StateGraph
 
+from app.helpers.llm_call import agent7_jobfinder_format_result
+
 
 class GraphState(TypedDict):
     # User input states
@@ -22,7 +24,7 @@ class GraphState(TypedDict):
     ats: dict[str, Any]
     optimizer: dict[str, Any]
     feedback: dict[str, Any] | str
-    job_finder: list[dict[str, Any]] | Any | None
+    job_finder: dict[str, Any] | Any | None
 
 async def agent1_node(state: GraphState) -> dict[str, Any]:
     intent = await intent_goal_agent(
@@ -36,7 +38,7 @@ async def agent2_node(state: GraphState) -> dict[str, Any]:
     industry = state.get("intent", {}).get("industry")
     if not isinstance(industry, str):
         industry = ""
-    analyzer = await analyzer_agent_premium(
+    analyzer = analyzer_agent_premium(
         state["resume_text"],
         industry,
         state.get("jd_text") or "",
@@ -44,7 +46,7 @@ async def agent2_node(state: GraphState) -> dict[str, Any]:
     return {"analyzer": analyzer}
 
 async def agent3_node(state: GraphState) -> dict[str, Any]:
-    ats = await ats_agent_premium(
+    ats = ats_agent_premium(
         state["resume_text"],
         state["analyzer"],
         state.get("jd_text") or "",
@@ -82,14 +84,15 @@ async def agent7_node(state: GraphState) -> dict[str, Any]:
         "ats": state.get("ats") or {},
         "optimizer": state.get("optimizer") or {},
     }
-    job_finder = await jobfinder_agent(
+    messages, raw_jobs = await jobfinder_agent(
         state["resume_text"],
         analyzed_results_dict
     )
-    return {"job_finder": job_finder}
+    jobfinder_result = agent7_jobfinder_format_result(messages, raw_jobs)
+    return {"job_finder": jobfinder_result}
 
 def includes_job_finder_edge(state: GraphState) -> Literal["agent7_jobfinder", "end"]:
-    if state.get("includes_job_finder") or False:
+    if state.get("includes_job_finder") is True:
         return "agent7_jobfinder"
     else:
         return "end"

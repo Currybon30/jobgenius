@@ -203,5 +203,6 @@ def ats_agent_premium(resume_text: str, agent2_result: dict, jd_text: Optional[s
         volunteer_score = 0
     results["volunteer_score"] = volunteer_score
 
-    results["ats_score"] = results["ats_score"] + certifications_score + languages_score + professional_links_score + volunteer_score
+    if jd_text != "":
+        results["ats_score"] = results.get("ats_score", 0) + certifications_score + languages_score + professional_links_score + volunteer_score
     return results
