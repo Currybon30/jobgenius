@@ -67,9 +67,8 @@ async def infra():
 @pytest.mark.asyncio
 async def test_store_resume_to_mongodb_integration(infra, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    Path(TEST_FILENAME).write_bytes(b"%PDF-1.4 integration-test")
 
-    resume = SimpleNamespace(filename=TEST_FILENAME)
+    pdf_bytes = Path(r"D:\IT\My Projects\job_recommender_system\api_server\external\Tuong_Nguyen_Pham_Resume.pdf").read_bytes()
     resume_id = f"{TEST_USER_ID}_{TEST_FILENAME}"
 
     mongo = get_mongo_client()
@@ -77,7 +76,7 @@ async def test_store_resume_to_mongodb_integration(infra, tmp_path, monkeypatch)
     await db["resumes"].delete_many({"user_id": TEST_USER_ID})
     await db["resume_for_job_recommendation"].delete_many({"resume_id": resume_id})
 
-    ok = await store_resume_to_mongodb(TEST_USER_ID, resume, SAMPLE_ANALYSIS)
+    ok = await store_resume_to_mongodb(TEST_USER_ID, TEST_FILENAME, pdf_bytes, SAMPLE_ANALYSIS)
     assert ok is True
 
     doc = await db["resumes"].find_one(
@@ -103,8 +102,19 @@ async def test_store_resume_to_mongodb_integration(infra, tmp_path, monkeypatch)
         Key=doc["storage_path"],
     )
     assert head["ResponseMetadata"]["HTTPStatusCode"] == 200
+    view_url = s3.generate_presigned_url(
+        "get_object",
+        Params={
+            "Bucket": settings.S3_BUCKET_NAME,
+            "Key": doc["storage_path"],
+        },
+        ExpiresIn=3600,
+    )
+    assert view_url is not None
+    assert view_url.startswith("https://") or view_url.startswith("http://")
+    print(view_url)
 
-    ok_again = await store_resume_to_mongodb(TEST_USER_ID, resume, SAMPLE_ANALYSIS)
+    ok_again = await store_resume_to_mongodb(TEST_USER_ID, TEST_FILENAME, pdf_bytes, SAMPLE_ANALYSIS)
     assert ok_again is True
 
     latest = await db["resumes"].find_one(
