@@ -1,20 +1,28 @@
 import json
-from langchain_core.messages import ToolMessage
-from langchain_mcp_adapters.client import MultiServerMCPClient 
-from langchain_ollama import ChatOllama
-from langchain.agents import create_agent
+
 from app.core.config import settings
 from app.helpers.job_indexing import index_jobs_in_background
+from langchain.agents import create_agent
+from langchain_core.messages import ToolMessage
+from langchain_mcp_adapters.client import MultiServerMCPClient
+from langchain_ollama import ChatOllama
 
-async def jobfinder_agent(resume_text: str, analyzed_results_dict: dict = None, user_requirements: str = ""):
-    mcp_client = MultiServerMCPClient({
-    "job_service": {
-        "command": "python",
-        "args": ["-m", "app.mcp.job_mcp"],
-        "transport": "stdio"
+
+async def jobfinder_agent(
+    resume_text: str,
+    analyzed_results_dict: dict | None = None,
+    user_requirements: str = "",
+):
+    mcp_client = MultiServerMCPClient(
+        {
+            "job_service": {
+                "command": "python",
+                "args": ["-m", "app.mcp.job_mcp"],
+                "transport": "stdio",
+            }
         }
-    })
-    
+    )
+
     tools = await mcp_client.get_tools()
 
     model = ChatOllama(
@@ -22,10 +30,7 @@ async def jobfinder_agent(resume_text: str, analyzed_results_dict: dict = None, 
         base_url=settings.OLLAMA_HOST,
     )
 
-    agent = create_agent(
-        model=model,
-        tools=tools
-    )
+    agent = create_agent(model=model, tools=tools)
 
     messages = [
         {
@@ -37,30 +42,32 @@ async def jobfinder_agent(resume_text: str, analyzed_results_dict: dict = None, 
                 You are also provided with a tool to search for jobs.
                 Note that you need to self-analyze the input to determine the best jobs for the user.
                 You must return the jobs with a beautiful and concise description of the job for later summary.
-            """
+            """,
         }
     ]
 
     if analyzed_results_dict:
-        messages.append({
-            "role": "user",
-            "content": f"""
+        messages.append(
+            {
+                "role": "user",
+                "content": f"""
                 Original resume text: {resume_text}
                 Analyzed results dictionary: {analyzed_results_dict}
-            """
-        })
+            """,
+            }
+        )
     else:
-        messages.append({
-            "role": "user",
-            "content": f"""
+        messages.append(
+            {
+                "role": "user",
+                "content": f"""
                 Original resume text: {resume_text}
                 User requirements: {user_requirements}
-            """
-        })
+            """,
+            }
+        )
 
-    result = await agent.ainvoke({
-        "messages": messages
-    })
+    result = await agent.ainvoke({"messages": messages})
 
     raw_jobs = None
 
@@ -71,35 +78,34 @@ async def jobfinder_agent(resume_text: str, analyzed_results_dict: dict = None, 
                 raw_jobs = jobs
                 await index_jobs_in_background(jobs)
             else:
-                parsed = json.loads(msg.content) if isinstance(msg.content, str) else msg.content
+                parsed = (
+                    json.loads(msg.content)
+                    if isinstance(msg.content, str)
+                    else msg.content
+                )
                 jobs = parsed if isinstance(parsed, list) else [parsed]
                 raw_jobs = jobs
                 await index_jobs_in_background(jobs)
-    
-    messages.append({
-        "role": "assistant",
-        "content": result["messages"][-1].content
-    })
 
-    messages.append({
-        "role": "user",
-        "content": f"""
+    messages.append({"role": "assistant", "content": result["messages"][-1].content})
+
+    messages.append(
+        {
+            "role": "user",
+            "content": """
             Explain why these jobs are the best fit for the user based on the original resume text and the analyzed results dictionary or user requirements.
             Be concise and to the point.
             Use bullet points to list the reasons if it is appropriate.
-        """
-    })
+        """,
+        }
+    )
 
-    result = await agent.ainvoke({
-        "messages": messages
-    })
+    result = await agent.ainvoke({"messages": messages})
 
-    messages.append({
-        "role": "assistant",
-        "content": result["messages"][-1].content
-    })
+    messages.append({"role": "assistant", "content": result["messages"][-1].content})
 
     return messages, raw_jobs
+
 
 # if __name__ == "__main__":
 #     import asyncio

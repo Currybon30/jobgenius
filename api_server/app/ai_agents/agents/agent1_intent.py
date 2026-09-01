@@ -1,12 +1,13 @@
 import logging
-from typing import Optional
 
 from app.helpers.llm_call import llm_call, safe_parse
 
 logger = logging.getLogger(__name__)
 
 
-async def intent_goal_agent(resume_text, jd_text: Optional[str] = "", user_goal: Optional[str] = ""):
+async def intent_goal_agent(
+    resume_text, jd_text: str | None = "", user_goal: str | None = ""
+):
     if jd_text == "":
         jd_text = "No job description provided."
     if user_goal == "":

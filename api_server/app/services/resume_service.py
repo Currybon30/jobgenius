@@ -18,7 +18,7 @@ def _resume_to_mongo(resume: Resume) -> dict:
     return document
 
 
-async def store_resume_to_mongodb(user_id: int, resume, analyzed_result: dict):
+async def store_resume_to_mongodb(user_id: int, resume_filename: str, pdf_bytes: bytes, analyzed_result: dict):
     try:
         s3_client = await get_s3_client()
         mongo_client = get_mongo_client()
@@ -28,23 +28,22 @@ async def store_resume_to_mongodb(user_id: int, resume, analyzed_result: dict):
 
         formatted_result = format_analyzer_result(analyzed_result)
         full_combined_text = analyzer_result_to_text(analyzed_result)
-        resume_id_generator = f"{user_id}_{resume.filename}"
+        resume_id_generator = f"{user_id}_{resume_filename}"
 
         existing_resume = await resume_collection.find_one(
             {"resume_id": resume_id_generator},
             sort=[("version", -1)],
         )
         next_version = (existing_resume["version"] + 1) if existing_resume else 1
+        storage_key = f"{user_id}/{resume_filename}/{next_version}.pdf"
 
         await asyncio.to_thread(
-            s3_client.upload_file,
-            Filename=resume.filename,
+            s3_client.put_object,
             Bucket=settings.S3_BUCKET_NAME,
-            Key=f"{user_id}/{resume.filename}/{next_version}.pdf",
-            ExtraArgs={
-                "ContentType": "application/pdf",
-                "ContentDisposition": "inline",
-            },
+            Key=storage_key,
+            Body=pdf_bytes,
+            ContentType="application/pdf",
+            ContentDisposition="inline"
         )
 
         new_resume = Resume(
@@ -52,8 +51,8 @@ async def store_resume_to_mongodb(user_id: int, resume, analyzed_result: dict):
             user_id=user_id,
             resume_id=resume_id_generator,
             version=next_version,
-            filename=resume.filename,
-            storage_path=f"{user_id}/{resume.filename}/{next_version}.pdf",
+            filename=resume_filename,
+            storage_path=storage_key,
             analysis=formatted_result,
         )
         await resume_collection.insert_one(_resume_to_mongo(new_resume))
@@ -98,7 +97,7 @@ async def get_resumes_from_mongodb(user_id: int):
 
         # Return indicated keys to user
         resumes = []
-        for response in responses:
+        async for response in responses:
             resumes.append({
                 "resume_id": response["resume_id"],
                 "version": response["version"],

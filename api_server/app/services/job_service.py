@@ -29,7 +29,7 @@ mcp = FastMCP("job_service")
 async def search_jobs(query: str, country: str = "ca", language: str = "en", date_posted: str = "all", employment_types: Optional[List[str]] = None):
     params = {
         "query": query,
-        "num_pages": 3,
+        "num_pages": 10,
         "country": country,
         "language": language,
         "date_posted": date_posted or "all"
@@ -127,7 +127,7 @@ async def store_jobs_to_pinecone(data):
                     job_data,
                     json_to_text,
                     pinecone_id,
-                    settings.EMBEDDING_MODEL_NAME,
+                    settings.EMBEDDING_MODEL,
                 )
             except Exception as e:
                 logger.error(f"Error storing job {job_id} to MongoDB: {e}")

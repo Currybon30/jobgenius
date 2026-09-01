@@ -1,4 +1,4 @@
-from typing import Any, Literal, Optional, TypedDict
+from typing import Any, Literal, NotRequired, TypedDict
 
 from app.ai_agents.agents.agent1_intent import intent_goal_agent
 from app.ai_agents.agents.agent2_analyzer import analyzer_agent_premium
@@ -6,17 +6,16 @@ from app.ai_agents.agents.agent3_ats import ats_agent_premium
 from app.ai_agents.agents.agent4_optimizer import optimizer_agent
 from app.ai_agents.agents.agent6_finalizer import finalizer_agent_premium
 from app.ai_agents.agents.agent7_jobfinder import jobfinder_agent
-from langgraph.graph import END, START, StateGraph
-
 from app.helpers.llm_call import agent7_jobfinder_format_result
+from langgraph.graph import END, START, StateGraph
 
 
 class GraphState(TypedDict):
     # User input states
     resume_text: str
-    jd_text: Optional[str]
-    user_goal: Optional[str]
-    includes_job_finder: bool = False # This job finder has a quota limit of 3 calls per 15 days
+    jd_text: str | None
+    user_goal: str | None
+    includes_job_finder: NotRequired[bool]
 
     # Agent output states
     intent: dict[str, Any] | Any
@@ -26,6 +25,7 @@ class GraphState(TypedDict):
     feedback: dict[str, Any] | str
     job_finder: dict[str, Any] | Any | None
 
+
 async def agent1_node(state: GraphState) -> dict[str, Any]:
     intent = await intent_goal_agent(
         state["resume_text"],
@@ -33,6 +33,7 @@ async def agent1_node(state: GraphState) -> dict[str, Any]:
         state.get("user_goal") or "",
     )
     return {"intent": intent}
+
 
 async def agent2_node(state: GraphState) -> dict[str, Any]:
     industry = state.get("intent", {}).get("industry")
@@ -45,6 +46,7 @@ async def agent2_node(state: GraphState) -> dict[str, Any]:
     )
     return {"analyzer": analyzer}
 
+
 async def agent3_node(state: GraphState) -> dict[str, Any]:
     ats = ats_agent_premium(
         state["resume_text"],
@@ -52,6 +54,7 @@ async def agent3_node(state: GraphState) -> dict[str, Any]:
         state.get("jd_text") or "",
     )
     return {"ats": ats}
+
 
 async def agent4_node(state: GraphState) -> dict[str, Any]:
     optimizer = await optimizer_agent(
@@ -63,6 +66,7 @@ async def agent4_node(state: GraphState) -> dict[str, Any]:
         state.get("ats") or {},
     )
     return {"optimizer": optimizer}
+
 
 async def agent6_node(state: GraphState) -> dict[str, Any]:
     feedback = await finalizer_agent_premium(
@@ -85,11 +89,11 @@ async def agent7_node(state: GraphState) -> dict[str, Any]:
         "optimizer": state.get("optimizer") or {},
     }
     messages, raw_jobs = await jobfinder_agent(
-        state["resume_text"],
-        analyzed_results_dict
+        state["resume_text"], analyzed_results_dict
     )
     jobfinder_result = agent7_jobfinder_format_result(messages, raw_jobs)
     return {"job_finder": jobfinder_result}
+
 
 def includes_job_finder_edge(state: GraphState) -> Literal["agent7_jobfinder", "end"]:
     if state.get("includes_job_finder") is True:
@@ -117,7 +121,7 @@ async def build_premium_graph():
         {
             "agent7_jobfinder": "agent7_jobfinder",
             "end": END,
-        }
+        },
     )
     graph.add_edge("agent7_jobfinder", END)
     return graph.compile()

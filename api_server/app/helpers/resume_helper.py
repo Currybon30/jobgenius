@@ -93,7 +93,7 @@ def format_analyzer_result(result: dict) -> dict:
     intent = _as_dict(result.get("intent"))
     analyzer = _as_dict(result.get("analyzer"))
     ats = _as_dict(result.get("ats"))
-    feedback = _as_dict(result.get("feedback") or result.get("finalizer"))
+    feedback = _as_dict(result.get("feedback"))
     optimizer = _as_dict(result.get("optimizer"))
 
     analysis = ResumeAnalysis(

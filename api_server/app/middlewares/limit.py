@@ -1,5 +1,4 @@
 import logging
-import uuid
 
 from app.auth.jwt_handler import decode_jwt
 from app.db.redis import get_redis_client
@@ -30,7 +29,7 @@ async def rate_limit_middleware(request: Request, call_next):
         except HTTPException:
             pass
 
-    ip = request.headers.get("x-forwarded-for", request.client.host) # type: ignore
+    ip = request.headers.get("x-forwarded-for", request.client.host)  # type: ignore
     ip = ip.split(",")[0].strip()
     anonymous_uuid = request.cookies.get("anonymous_uuid")
 
@@ -46,28 +45,37 @@ async def rate_limit_middleware(request: Request, call_next):
     elif int(rate) < RATE_LIMIT:
         await redis_client.incr(rate_key)
     else:
-        logger.warning(f"Rate limit exceeded for anonymous UUID: {anonymous_uuid} on IP: {ip}")
+        logger.warning(
+            f"Rate limit exceeded for anonymous UUID: {anonymous_uuid} on IP: {ip}"
+        )
         raise HTTPException(
-            status_code=429, detail="Too many requests. Please try again later.")
+            status_code=429, detail="Too many requests. Please try again later."
+        )
 
     # ---- 2. Monthly quota check (before request work) ----
     usage_key = f"usage:{anonymous_uuid}"
     usage = await redis_client.get(usage_key)
 
-    if (request.url.path.startswith("/api/recommendations")): # skip monthly quota check for recommendations
+    if request.url.path.startswith(
+        "/api/recommendations"
+    ):  # skip monthly quota check for recommendations
         return await call_next(request)
 
     if usage is None:
-        await redis_client.set(usage_key, 1, ex=MONTH_WINDOW)
+        await redis_client.set(usage_key, 0)
     else:
         if int(usage) >= MONTH_LIMIT:
             logger.warning(
-                f"Monthly limit exceeded for Anonymous UUID: {anonymous_uuid}")
+                f"Monthly limit exceeded for Anonymous UUID: {anonymous_uuid}"
+            )
             raise HTTPException(
-                status_code=403, detail="Monthly usage limit exceeded. Please log in to continue using our features.")
+                status_code=403,
+                detail="Monthly usage limit exceeded. Please log in to continue using our features.",
+            )
 
     response = await call_next(request)
     return response
+
 
 async def increment_monthly_usage(anonymous_uuid: str):
     redis_client = get_redis_client()
@@ -76,5 +84,6 @@ async def increment_monthly_usage(anonymous_uuid: str):
 
     if usage is not None:
         await redis_client.incr(usage_key)
+        await redis_client.expire(usage_key, MONTH_WINDOW)
     else:
         raise KeyError(f"Usage key '{usage_key}' is not found in Redis")

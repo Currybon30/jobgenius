@@ -3,13 +3,20 @@ import re
 from datetime import datetime
 
 import pymupdf
-from app.helpers.resume_helper import match_variants, normalize_text, parse_proficiency_from_text, split_language_and_proficiency
-from app.internal_db.skills import (BUSINESS_SKILL_NORMALIZATION,
-                                    IT_SKILL_NORMALIZATION,
-                                    SOFT_SKILL_NORMALIZATION)
-from app.services.jd import extract_skills_from_jd_text
 from fastapi import UploadFile
 
+from app.helpers.resume_helper import (
+    match_variants,
+    normalize_text,
+    parse_proficiency_from_text,
+    split_language_and_proficiency,
+)
+from app.internal_db.skills import (
+    BUSINESS_SKILL_NORMALIZATION,
+    IT_SKILL_NORMALIZATION,
+    SOFT_SKILL_NORMALIZATION,
+)
+from app.services.jd import extract_skills_from_jd_text
 
 _HTTP_URL_PATTERN = re.compile(r"https?://[^\s<>\"'\)\],]+", re.IGNORECASE)
 _BARE_PROFILE_URL_PATTERN = re.compile(
@@ -34,19 +41,33 @@ _EXCLUDED_PORTFOLIO_DOMAINS = (
 
 logger = logging.getLogger(__name__)
 
-############################### EXTRACT SECTIONS ################################
-async def extract_text_from_resume(resume_pdf_file: UploadFile) -> str:
-    try:
-        if not resume_pdf_file.filename or not resume_pdf_file.filename.lower().endswith('.pdf'):
-            raise ValueError("Unsupported file format. Please upload a PDF.")
-        file_bytes = await resume_pdf_file.read()
-        if not file_bytes:
-            raise ValueError("Uploaded PDF is empty.")
 
-        doc = pymupdf.open(stream=file_bytes, filetype="pdf")
+############################### EXTRACT SECTIONS ################################
+async def convert_file_to_bytes(file: UploadFile) -> bytes:
+    try:
+        if not file:
+            raise ValueError("File is required.")
+        file_bytes = await file.read()
+        if not file_bytes:
+            raise ValueError("File is empty.")
+        return file_bytes
+    except Exception as e:
+        logger.error(f"Error converting file to bytes: {e}")
+        raise ValueError("Error converting file to bytes.")
+
+
+def extract_text_from_resume(resume_pdf_file, resume_bytes: bytes) -> str:
+    try:
+        if (
+            not resume_pdf_file.filename
+            or not resume_pdf_file.filename.lower().endswith(".pdf")
+        ):
+            raise ValueError("Unsupported file format. Please upload a PDF.")
+
+        doc = pymupdf.open(stream=resume_bytes, filetype="pdf")
         text = ""
         for page in doc:
-            text += page.get_text() # type: ignore
+            text += page.get_text()  # type: ignore
         doc.close()
         return text
     except FileNotFoundError as e:
@@ -63,7 +84,8 @@ async def extract_text_from_resume(resume_pdf_file: UploadFile) -> str:
 def __extract_soft_skills_from_text(text: str):
     text = normalize_text(text)
     found_soft_skills = {
-        canonical for canonical, variants in SOFT_SKILL_NORMALIZATION.items()
+        canonical
+        for canonical, variants in SOFT_SKILL_NORMALIZATION.items()
         if match_variants(text, variants)
     }
     return list(found_soft_skills)
@@ -72,15 +94,16 @@ def __extract_soft_skills_from_text(text: str):
 def extract_skills_from_text_without_jd(text: str, field: str):
     text = normalize_text(text)
     found_soft_skills = __extract_soft_skills_from_text(text)
-    if field == 'it' or field == 'technology' or field == 'software' or field == 'tech':
+    if field == "it" or field == "technology" or field == "software" or field == "tech":
         skills_to_check = IT_SKILL_NORMALIZATION
-    elif field == 'business':
+    elif field == "business":
         skills_to_check = BUSINESS_SKILL_NORMALIZATION
     else:
         return {"skills": [], "soft_skills": found_soft_skills}
 
     found_skills = {
-        canonical for canonical, variants in skills_to_check.items()
+        canonical
+        for canonical, variants in skills_to_check.items()
         if match_variants(text, variants)
     }
 
@@ -96,19 +119,23 @@ def extract_skills_from_text_with_jd(text: str, jd_text: str, limit: int = 5):
     jd_skills = extract_skills_from_jd_text(jd_text)
     all_skills = {**IT_SKILL_NORMALIZATION, **BUSINESS_SKILL_NORMALIZATION}
     found_skills = {
-        canonical for canonical, variants in all_skills.items()
+        canonical
+        for canonical, variants in all_skills.items()
         if match_variants(text, variants) and canonical in jd_skills
     }
     missing_skills = set(jd_skills) - found_skills
-    matching_skills_score = len(found_skills) / \
-        len(jd_skills) if jd_skills else 0.1
+    matching_skills_score = len(found_skills) / len(jd_skills) if jd_skills else 0.1
 
     found_soft_skills_from_jd = set(__extract_soft_skills_from_text(jd_text))
     found_soft_skills_from_resume = set(__extract_soft_skills_from_text(text))
-    
+
     missing_soft_skills = found_soft_skills_from_jd - found_soft_skills_from_resume
     matching_soft_skills = found_soft_skills_from_jd & found_soft_skills_from_resume
-    matching_soft_skills_score = len(matching_soft_skills) / len(found_soft_skills_from_jd) if found_soft_skills_from_jd else 0.1
+    matching_soft_skills_score = (
+        len(matching_soft_skills) / len(found_soft_skills_from_jd)
+        if found_soft_skills_from_jd
+        else 0.1
+    )
     return {
         "skills": list(found_skills),
         # Limit to top 5 missing skills for free users
@@ -121,16 +148,16 @@ def extract_skills_from_text_with_jd(text: str, jd_text: str, limit: int = 5):
 
 
 def extract_sections_from_text(text: str):
-    text = re.sub(r'\r\n', '\n', text)
+    text = re.sub(r"\r\n", "\n", text)
     section_patterns = {
-        "summary": r'^\s*(summary|objective|profile|professional summary|career objective|professional objective|summary of qualification)\b',
-        "skills": r'^\s*(skills|technical skills)\b',
-        "education": r'^\s*(education|academic background)\b',
-        "experience": r'^\s*(experience|work experience|employment history|professional experience)\b',
-        "projects": r'^\s*(projects|project experience)\b',
-        "certifications": r'^\s*(certifications|certification|courses|training|qualifications|credentials|licenses)\b',
-        "languages": r'^\s*(languages|language skills)\b',
-        "volunteer": r'^\s*(volunteer|volunteering|volunteer experience|community service|community involvement)\b',
+        "summary": r"^\s*(summary|objective|profile|professional summary|career objective|professional objective|summary of qualification)\b",
+        "skills": r"^\s*(skills|technical skills)\b",
+        "education": r"^\s*(education|academic background)\b",
+        "experience": r"^\s*(experience|work experience|employment history|professional experience)\b",
+        "projects": r"^\s*(projects|project experience)\b",
+        "certifications": r"^\s*(certifications|certification|courses|training|qualifications|credentials|licenses)\b",
+        "languages": r"^\s*(languages|language skills)\b",
+        "volunteer": r"^\s*(volunteer|volunteering|volunteer experience|community service|community involvement)\b",
     }
 
     matches = []
@@ -153,18 +180,19 @@ def extract_sections_from_text(text: str):
 
     return extracted
 
+
 def extract_contact_info(text: str):
     # Use regex to find potential email addresses and phone numbers
-    email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
-    phone_pattern = r'\+?\d{1,4}?[-.\s]?\(?\d{1,3}?\)?[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}'
+    email_pattern = r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
+    phone_pattern = (
+        r"\+?\d{1,4}?[-.\s]?\(?\d{1,3}?\)?[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}"
+    )
 
     emails = re.findall(email_pattern, text)
     phones = re.findall(phone_pattern, text)
 
-    return {
-        "emails": emails,
-        "phone_numbers": phones
-    }
+    return {"emails": emails, "phone_numbers": phones}
+
 
 def extract_certifications(certifications_text: str) -> list[str]:
     """
@@ -207,7 +235,6 @@ def extract_certifications(certifications_text: str) -> list[str]:
     return certifications
 
 
-
 def extract_languages(languages_text: str) -> list[dict[str, str]]:
     """
     Extract languages from the languages section content
@@ -229,10 +256,16 @@ def extract_languages(languages_text: str) -> list[dict[str, str]]:
         line = re.sub(r"\s{2,}", " ", line).strip(" ,;")
         if not line:
             continue
-        if index == 0 and re.match(r"^\s*(languages|language skills)\b", line, re.IGNORECASE):
+        if index == 0 and re.match(
+            r"^\s*(languages|language skills)\b", line, re.IGNORECASE
+        ):
             continue
 
-        parts = re.split(r"[,;]|\band\b", line, flags=re.IGNORECASE) if re.search(r"[,;]|\band\b", line, re.IGNORECASE) else [line]
+        parts = (
+            re.split(r"[,;]|\band\b", line, flags=re.IGNORECASE)
+            if re.search(r"[,;]|\band\b", line, re.IGNORECASE)
+            else [line]
+        )
         for part in parts:
             token = part.strip(" ,;")
             if not token:
@@ -247,9 +280,12 @@ def extract_languages(languages_text: str) -> list[dict[str, str]]:
             key = (matched_language.lower(), proficiency)
             if key not in seen:
                 seen.add(key)
-                languages.append({"language": matched_language, "proficiency": proficiency})
+                languages.append(
+                    {"language": matched_language, "proficiency": proficiency}
+                )
 
     return languages
+
 
 def extract_professional_links(text: str) -> dict[str, str | list[str] | None]:
     """
@@ -286,7 +322,9 @@ def extract_professional_links(text: str) -> dict[str, str | list[str] | None]:
 
     other_links: list[str] = []
     for url in found_urls:
-        normalized = url if url.lower().startswith(("http://", "https://")) else f"https://{url}"
+        normalized = (
+            url if url.lower().startswith(("http://", "https://")) else f"https://{url}"
+        )
         lowered = normalized.lower()
 
         if "linkedin.com" in lowered:
@@ -311,6 +349,7 @@ def extract_professional_links(text: str) -> dict[str, str | list[str] | None]:
     result["other"] = other_links
     return result
 
+
 ############################### RULE-BASED ANALYSIS ################################
 def __estimate_experience_years(text: str):
     total_years = 0
@@ -318,17 +357,18 @@ def __estimate_experience_years(text: str):
 
     # Match: 2020 - 2023 OR 2021 - Present
     date_ranges = re.findall(
-        r'(20\d{2})\s*[-–—]\s*(20\d{2}|present)', text, re.IGNORECASE)
+        r"(20\d{2})\s*[-–—]\s*(20\d{2}|present)", text, re.IGNORECASE
+    )
 
     for start, end in date_ranges:
         start = int(start)
         end = current_year if end.lower() == "present" else int(end)
 
         if end >= start:
-            total_years += (end - start)
+            total_years += end - start
 
     # Fallback: "3+ years"
-    explicit = re.search(r'(\d+)\+?\s+years', text, re.IGNORECASE)
+    explicit = re.search(r"(\d+)\+?\s+years", text, re.IGNORECASE)
     if explicit:
         total_years = max(total_years, int(explicit.group(1)))
 
@@ -349,14 +389,10 @@ def has_metrics(text: str):
     experience_text = sections.get("experience", "")
     projects_text = sections.get("projects", "")
     # Look for patterns including numbers, %, $, etc. in experience and projects sections
-    metrics_pattern = r'(\d+[\w%$]*)'
+    metrics_pattern = r"(\d+[\w%$]*)"
     # Make sure every bullet point has some metrics
-    experience_bullets = [
-        b for b in re.split(r'[\r\n]+', experience_text) if b.strip()
-    ]
-    projects_bullets = [
-        b for b in re.split(r'[\r\n]+', projects_text) if b.strip()
-    ]
+    experience_bullets = [b for b in re.split(r"[\r\n]+", experience_text) if b.strip()]
+    projects_bullets = [b for b in re.split(r"[\r\n]+", projects_text) if b.strip()]
     experience_metrics = sum(
         bool(re.search(metrics_pattern, bullet)) for bullet in experience_bullets
     )

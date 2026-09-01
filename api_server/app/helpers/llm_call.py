@@ -131,8 +131,9 @@ def agent7_jobfinder_format_result(messages: list[dict[str, Any]], raw_jobs: lis
         formatted_jobs = _normalize_jobfinder_jobs(raw_jobs)
         if not formatted_jobs:
             return {
-                "message": "error: no jobs found",
-                "jobs": []
+                "message": "",
+                "jobs": [],
+                "error": "No jobs found"
             }
         else:
             return {

@@ -1,14 +1,17 @@
-from typing import Optional
-
 from app.services.resume_analyzer import (
-                    extract_skills_from_text_without_jd, 
-                    extract_skills_from_text_with_jd, 
-                    extract_sections_from_text,estimate_experience_years_from_sections, 
-                    has_metrics, extract_contact_info, 
-                    extract_skills_from_text_with_jd, extract_sections_from_text,
-                    extract_certifications, extract_languages, extract_professional_links)
+    estimate_experience_years_from_sections,
+    extract_certifications,
+    extract_contact_info,
+    extract_languages,
+    extract_professional_links,
+    extract_sections_from_text,
+    extract_skills_from_text_with_jd,
+    extract_skills_from_text_without_jd,
+    has_metrics,
+)
 
-def analyzer_agent_free_tier(resume_text, industry: str = "", jd_text: Optional[str] = ""):
+
+def analyzer_agent_free_tier(resume_text, industry: str = "", jd_text: str = ""):
     """
     No languages and certifications are checked for now.
     """
@@ -37,7 +40,7 @@ def analyzer_agent_free_tier(resume_text, industry: str = "", jd_text: Optional[
             "phone_numbers": contact_info["phone_numbers"],
             "has_metrics": has_metrics_bool,
             "hard_skills": skills_info["skills"],
-            "soft_skills": skills_info["soft_skills"]
+            "soft_skills": skills_info["soft_skills"],
         }
     else:
         skills_info = extract_skills_from_text_with_jd(resume_text, jd_text, limit=5)
@@ -57,10 +60,11 @@ def analyzer_agent_free_tier(resume_text, industry: str = "", jd_text: Optional[
             "missing_hard_skills": skills_info["missing_skills"],
             "matching_hard_skills_score": skills_info["matching_skills_score"],
             "missing_soft_skills": skills_info["missing_soft_skills"],
-            "matching_soft_skills_score": skills_info["matching_soft_skills_score"]
+            "matching_soft_skills_score": skills_info["matching_soft_skills_score"],
         }
 
-def analyzer_agent_premium(resume_text, industry: str = "", jd_text: Optional[str] = ""):
+
+def analyzer_agent_premium(resume_text, industry: str = "", jd_text: str = ""):
     """
     Premium users have access to all the features of the free tier, plus:
     - Certifications
@@ -69,15 +73,23 @@ def analyzer_agent_premium(resume_text, industry: str = "", jd_text: Optional[st
     - Volunteer section (a plus if no experience section and relevant to the resume title and/or job description)
     """
     results = {}
-    analyzer_agent_free_tier_result = analyzer_agent_free_tier(resume_text, industry, jd_text)
+    analyzer_agent_free_tier_result = analyzer_agent_free_tier(
+        resume_text, industry, jd_text
+    )
     for key, value in analyzer_agent_free_tier_result.items():
         results[key] = value
     sections = extract_sections_from_text(resume_text)
     has_volunteer_bool = True if "volunteer" in sections else False
-    results["certifications"] = extract_certifications(sections.get("certifications", ""))
+    results["certifications"] = extract_certifications(
+        sections.get("certifications", "")
+    )
     results["languages"] = extract_languages(sections.get("languages", ""))
     results["professional_links"] = extract_professional_links(resume_text)
-    if results["has_experience"] == False and results["has_projects"] == False and has_volunteer_bool:
+    if (
+        results["has_experience"] == False
+        and results["has_projects"] == False
+        and has_volunteer_bool
+    ):
         results["has_volunteer"] = True
     else:
         results["has_volunteer"] = False

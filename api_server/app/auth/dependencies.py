@@ -1,6 +1,8 @@
-from app.auth.jwt_handler import decode_jwt
-from fastapi import Depends, HTTPException, Request, status
 import logging
+
+from fastapi import HTTPException, Request, status
+
+from app.auth.jwt_handler import decode_jwt
 
 logger = logging.getLogger(__name__)
 
@@ -10,18 +12,16 @@ def get_current_user_id(request: Request) -> int:
     if not access_token:
         logger.warning("Access token is missing")
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Access token is missing"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Access token is missing"
         )
-    
+
     payload = decode_jwt(access_token)
     user_id = payload.get("user_id")
 
     if user_id is None:
         logger.warning("Invalid token payload")
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token payload"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload"
         )
 
-    return user_id
+    return int(user_id)
