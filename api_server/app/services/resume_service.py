@@ -109,15 +109,16 @@ async def get_resumes_from_mongodb(user_id: int):
         logger.error(f"Error getting resume from MongoDB: {e}")
         return []
 
-async def get_resume_by_id_and_version_from_mongodb(resume_id: str, version: int):
+async def get_resume_by_id_and_version_from_mongodb(user_id: int, resume_id: str, version: int):
     try:
         mongo_client = get_mongo_client()
         mongo_db = mongo_client[settings.MONGODB_NAME]
         resume_collection = mongo_db["resumes"]
-        response = await resume_collection.find_one({"resume_id": resume_id, "version": version})
+        response = await resume_collection.find_one({"user_id": user_id, "resume_id": resume_id, "version": version})
         if response is None:
-            return None
+            raise ValueError(f"UResume {resume_id} version {version} of user {user_id} not found. Please run premium analysis first.")
         return {
+            "user_id": response["user_id"],
             "resume_id": response["resume_id"],
             "version": response["version"],
             "filename": response["filename"],
@@ -138,3 +139,37 @@ async def get_resume_for_job_recommendation_from_mongodb(resume_id: str):
     except Exception as e:
         logger.error(f"Error getting resume for job recommendation from MongoDB: {e}")
         return None
+
+
+async def get_latest_resume_id_for_user(user_id: int) -> str | None:
+    try:
+        mongo_client = get_mongo_client()
+        mongo_db = mongo_client[settings.MONGODB_NAME]
+        resume_collection = mongo_db["resumes"]
+        latest = await resume_collection.find_one(
+            {"user_id": user_id},
+            sort=[("created_at", -1), ("version", -1)],
+        )
+        if latest is None:
+            return None
+        return latest["resume_id"]
+    except Exception as e:
+        logger.error(f"Error getting latest resume for user {user_id}: {e}")
+        return None
+
+
+async def resolve_resume_id_for_recommendations(
+    user_id: int, resume_id: str | None = None
+) -> str:
+    if resume_id:
+        rec = await get_resume_for_job_recommendation_from_mongodb(resume_id)
+        if not rec:
+            raise ValueError("Resume not found")
+        if rec.get("user_id") != user_id:
+            raise ValueError("Resume does not belong to this user")
+        return resume_id
+
+    latest_resume_id = await get_latest_resume_id_for_user(user_id)
+    if not latest_resume_id:
+        raise ValueError("No stored resume found. Run premium resume analyze first.")
+    return latest_resume_id

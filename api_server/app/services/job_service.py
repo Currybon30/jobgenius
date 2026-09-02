@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 mcp = FastMCP("job_service")
 
 
+
 @mcp.tool("search_jobs", 
     description="""
     Search jobs through the third-party API (JSearch API)
@@ -80,7 +81,8 @@ def _pinecone_job_metadata(job_data: dict) -> dict:
         for k, v in {
             "job_id": job_data.get("job_id"),
             "employer_name": job_data.get("employer_name"),
-            "job_country": job_data.get("job_country")
+            "job_city": job_data.get("job_city").lower().strip(),
+            "job_country": job_data.get("job_country").lower().strip(),
         }.items()
         if v is not None
     }
@@ -138,7 +140,7 @@ async def store_jobs_to_pinecone(data):
         logger.error(f"Error storing jobs to MongoDB and Pinecone: {e}")
         return False
 
-async def search_jobs_in_pinecone(query: str) -> List[dict]:
+async def search_jobs_in_pinecone(query: str, job_city: str = "", job_country: str = "") -> List[dict]:
     try:
         pinecone_index = get_pinecone_index()
         embedding = await embed_text(query)
@@ -153,13 +155,16 @@ async def search_jobs_in_pinecone(query: str) -> List[dict]:
         matches = results.get("matches", [])
         if not matches:
             return []
-
-        return matches
+        if job_city and job_country:
+            return [m for m in matches if m.get("metadata") and m.get("metadata").get("job_city") == job_city.lower().strip() and m.get("metadata").get("job_country") == job_country.lower().strip()]
+        else:
+            return matches
     except Exception as e:
         logger.error(f"Error getting jobs in Pinecone: {e}")
         return []
 
-async def job_recommendation(resume_id: str) -> dict:
+async def job_recommendation_with_pinecone(resume_id: str, job_city: str = "", job_country: str = "") -> dict:
+    resume_text = ""
     try:
         resume = await get_resume_for_job_recommendation_from_mongodb(resume_id)
         if not resume:
@@ -167,12 +172,12 @@ async def job_recommendation(resume_id: str) -> dict:
         resume_text = resume.get("full_combined_text") or ""
         if not resume_text.strip():
             return {"error": "Resume has no searchable text"}
-        matches = await search_jobs_in_pinecone(resume_text)
+        matches = await search_jobs_in_pinecone(resume_text, job_city, job_country)
         if not matches:
-            return {"error": "No jobs found"}
+            return {"error": "No jobs found", "resume_text": resume_text}
         matches = [m for m in matches if m.get("score", 0) > 0.65]
         if not matches:
-            return {"error": "No jobs above similarity threshold"}
+            return {"error": "No jobs above similarity threshold", "resume_text": resume_text}
         recommended_jobs = []
         for match in matches:
             job_id = (match.get("metadata") or {}).get("job_id")
@@ -180,8 +185,10 @@ async def job_recommendation(resume_id: str) -> dict:
                 continue
             job = await get_job_from_mongodb(job_id)
             if job and job.get("is_active", True):
-                recommended_jobs.append({"job": job, "score": match["score"]})
+                recommended_jobs.append({"job": job, "match_score": match["score"]})
+        if not recommended_jobs:
+            return {"error": "No recommended jobs found", "resume_text": resume_text}
         return recommended_jobs
     except Exception as e:
         logger.error(f"Error getting job recommendation: {e}")
-        return []
+        return {"error": "Failed to get job recommendations", "resume_text": resume_text}
