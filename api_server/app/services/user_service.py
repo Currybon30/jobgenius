@@ -1,12 +1,14 @@
 import logging
 from datetime import datetime
+from typing import Annotated
+
+from fastapi import Depends, HTTPException
+from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user_id
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.user import PlanEnum, UserPlanUpdate, UserResponse
-from fastapi import Depends, HTTPException
-from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +17,7 @@ def get_user_by_id(db: Session, user_id: int):
     return db.query(User).filter(User.uid == user_id).first()
 
 
-def add_user_to_db(user_id: int, db: Session = Depends(get_db)):
+def add_user_to_db(user_id: int, db: Session):
     new_user = User()
     new_user.uid = user_id
     new_user.plan = "FREE"
@@ -26,7 +28,10 @@ def add_user_to_db(user_id: int, db: Session = Depends(get_db)):
     return new_user
 
 
-def get_current_user(db: Session = Depends(get_db), user_id: int = Depends(get_current_user_id)):
+def get_current_user(
+    db: Annotated[Session, Depends(get_db)],
+    user_id: Annotated[int, Depends(get_current_user_id)],
+):
     user = get_user_by_id(db, user_id)
     if not user:
         logger.warning(f"User with ID {user_id} not found")
@@ -34,7 +39,7 @@ def get_current_user(db: Session = Depends(get_db), user_id: int = Depends(get_c
     return UserResponse(uid=user.uid, plan=PlanEnum(user.plan.upper() if user.plan else "FREE"), plan_expiry=user.plan_expiry)
 
 
-def update_user_plan(user_id: int, data: UserPlanUpdate, db: Session = Depends(get_db)):
+def update_user_plan(user_id: int, data: UserPlanUpdate, db: Session):
     user = get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(404, "User not found")

@@ -1,3 +1,4 @@
+import hashlib
 from app.core.config import settings
 from app.db.pinecone import get_pinecone_index
 from app.helpers.job_api_helper import jsearch_format_data, jsearch_json_to_text
@@ -30,7 +31,7 @@ mcp = FastMCP("job_service")
 async def search_jobs(query: str, country: str = "ca", language: str = "en", date_posted: str = "all", employment_types: Optional[List[str]] = None):
     params = {
         "query": query,
-        "num_pages": 10,
+        "num_pages": 2,
         "country": country,
         "language": language,
         "date_posted": date_posted or "all"
@@ -42,7 +43,7 @@ async def search_jobs(query: str, country: str = "ca", language: str = "en", dat
         f"{settings.JSEARCH_HOST}/search-v2",
         headers=settings.JSEARCH_HEADERS,
         params=params,
-        timeout=30,
+        timeout=60,
     )
     response.raise_for_status()
     body = response.json()
@@ -104,8 +105,9 @@ async def store_jobs_to_pinecone(data):
                 logger.warning("Skipping job without job_id")
                 continue
 
-            pinecone_id = "vec" + job_id
-            if pinecone_index.fetch(ids=[pinecone_id]):
+            pinecone_id = "vec" + hashlib.sha256(job_id.encode("utf-8")).hexdigest()
+            logger.info(f"Pinecone ID: {pinecone_id}")
+            if (await pinecone_index.fetch(ids=[pinecone_id])).vectors != {}:
                 logger.warning(f"Job {job_id} already exists in Pinecone")
                 continue
             json_to_text = jsearch_json_to_text(job_data)
@@ -163,10 +165,10 @@ async def search_jobs_in_pinecone(query: str, job_city: str = "", job_country: s
         logger.error(f"Error getting jobs in Pinecone: {e}")
         return []
 
-async def job_recommendation_with_pinecone(resume_id: str, job_city: str = "", job_country: str = "") -> dict:
+async def job_recommendation_with_pinecone(user_id: int, resume_id: str, job_city: str = "", job_country: str = "") -> dict:
     resume_text = ""
     try:
-        resume = await get_resume_for_job_recommendation_from_mongodb(resume_id)
+        resume = await get_resume_for_job_recommendation_from_mongodb(user_id, resume_id)
         if not resume:
             return {"error": "Resume not found"}
         resume_text = resume.get("full_combined_text") or ""
