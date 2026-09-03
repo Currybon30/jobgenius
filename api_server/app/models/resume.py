@@ -72,7 +72,8 @@ class Resume(BaseModel):
     resume_id: str
     version: int = 1
     filename: str
-    storage_path: Optional[str] = None # will be implemented in the future
+    storage_path: Optional[str] = None
+    content_sha256: Optional[str] = None
     analysis: ResumeAnalysis
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
