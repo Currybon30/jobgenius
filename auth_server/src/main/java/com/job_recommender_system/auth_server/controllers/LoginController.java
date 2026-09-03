@@ -111,8 +111,11 @@ public class LoginController {
                     .orElseThrow(() -> new RuntimeException("User not found"));
             Map<String, String> tokens = jwtService.refreshAccessToken(refreshToken, user);
 
-            String newAccessToken = tokens.get("accessToken");
+            String newAccessToken = tokens.get("access_token");
             String newRefreshToken = tokens.get("refresh_token");
+
+            System.out.println("New Access Token: " + newAccessToken);
+
 
             ResponseCookie cookie = ResponseCookie.from("access_token", Objects.requireNonNull(newAccessToken))
                     .httpOnly(true)
@@ -132,7 +135,6 @@ public class LoginController {
 
             response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
             response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
-
             return ResponseEntity.ok("Access token refreshed successfully");
         } catch (Exception e) {
             String message = e.getMessage();

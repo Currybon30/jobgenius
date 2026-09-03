@@ -133,11 +133,7 @@ public class JwtService {
         newToken.setSessionStartAt(token.getSessionStartAt()); // Keep the original session start time
         refreshTokenRepository.save(newToken);
 
-        Map<String, String> tokens = Map.of(
-                "access_token", newAccessToken,
-                "refresh_token", newRefreshTokenStr);
-
-        return tokens;
+        return Map.of("access_token", newAccessToken, "refresh_token", newRefreshTokenStr);
     }
 
     @Transactional
