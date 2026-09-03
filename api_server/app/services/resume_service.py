@@ -309,6 +309,11 @@ async def delete_resume_by_id_and_version(user_id: int, resume_id: str, version:
                 Bucket=settings.S3_BUCKET_NAME,
                 Key=key,
             )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Key (storage_path) for resume {resume_id} version {version} of user {user_id} not found.",
+            )
     except HTTPException:
         raise
     except ValueError:
