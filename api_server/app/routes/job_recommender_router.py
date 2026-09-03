@@ -8,9 +8,9 @@ from fastapi.responses import JSONResponse
 
 from app.ai_agents.agents.agent7_jobfinder import jobfinder_agent
 from app.auth.dependencies import get_current_user_id
-from app.db.arq import get_arq_pool
-from app.db.redis import get_redis_client
+from app.db.redis import cache_get, cache_set
 from app.helpers.auth_helper import is_premium_user
+from app.helpers.job_indexing import schedule_job_indexing
 from app.helpers.llm_call import agent7_jobfinder_format_result
 from app.helpers.user_helper import get_user_city_and_country
 from app.schemas.user import UserResponse
@@ -31,23 +31,22 @@ PREMIUM_RECOMMENDATIONS_CACHE_TTL = 60 * 60 * 24 * 3  # 3 days
 
 
 async def _cache_and_return_premium_recommendations(
-    redis_client,
     cache_key: str,
     content: dict,
 ) -> JSONResponse:
-    await redis_client.set(
+    ok = await cache_set(
         cache_key,
         json.dumps(content),
         ex=PREMIUM_RECOMMENDATIONS_CACHE_TTL,
     )
+    if not ok:
+        logger.warning("Premium recommendations cache write failed for %s", cache_key)
     return JSONResponse(status_code=status.HTTP_200_OK, content=content)
 
 
 @router.get("/recommendations")
 async def get_job_recommendations_unlogged_in_user(request: Request):
     try:
-        arq_pool = get_arq_pool()
-        redis_client = get_redis_client()
         anonymous_uuid = request.cookies.get("anonymous_uuid")
         if not anonymous_uuid:
             raise HTTPException(
@@ -69,7 +68,7 @@ async def get_job_recommendations_unlogged_in_user(request: Request):
         cache_input = f"{anonymous_uuid}_{city}_{country_code}".lower().strip()
         cache_hash = hashlib.sha256(cache_input.encode()).hexdigest()[:16]
         recommendations_cache_key = f"recommendations_cache:{cache_hash}"
-        recommendations = await redis_client.get(recommendations_cache_key)
+        recommendations = await cache_get(recommendations_cache_key)
         if recommendations:
             return JSONResponse(
                 status_code=status.HTTP_200_OK,
@@ -85,12 +84,17 @@ async def get_job_recommendations_unlogged_in_user(request: Request):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="No jobs found"
             )
-        await arq_pool.enqueue_job("store_jobs_to_pinecone_arq", jobs)
-        await redis_client.set(
+        schedule_job_indexing(jobs)
+        ok = await cache_set(
             recommendations_cache_key,
             json.dumps(jobs),
             ex=UNLOGGED_IN_RECOMMENDATIONS_CACHE_TTL,
         )
+        if not ok:
+            logger.warning(
+                "Unlogged recommendations cache write failed for %s",
+                recommendations_cache_key,
+            )
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content={"provider": "search_jobs", "jobs": jobs},
@@ -112,8 +116,8 @@ async def get_job_recommendations_unlogged_in_user(request: Request):
 @router.get("/recommendations/free")
 async def get_job_recommendations_free_user(
     request: Request,
-    industry: Annotated[str, Query("any job")],
     current_user: Annotated[UserResponse, Depends(get_current_user)],
+    industry: Annotated[str, Query()] = "any job",
 ):
     """
     Get job recommendations for a free user.
@@ -133,8 +137,6 @@ async def get_job_recommendations_free_user(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"
         )
     try:
-        arq_pool = get_arq_pool()
-        redis_client = get_redis_client()
         ip = request.headers.get("x-forwarded-for") or (
             request.client.host if request.client else None
         )
@@ -150,7 +152,7 @@ async def get_job_recommendations_free_user(
         cache_input = f"{current_user.uid}_{normalized_industry}_{city}_{country_code}".lower().strip()
         cache_hash = hashlib.sha256(cache_input.encode()).hexdigest()[:16]
         recommendations_cache_key = f"recommendations_cache:free:{cache_hash}"
-        recommendations = await redis_client.get(recommendations_cache_key)
+        recommendations = await cache_get(recommendations_cache_key)
         if recommendations:
             return JSONResponse(
                 status_code=status.HTTP_200_OK,
@@ -166,12 +168,18 @@ async def get_job_recommendations_free_user(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="No jobs found"
             )
-        await arq_pool.enqueue_job("store_jobs_to_pinecone_arq", jobs)
-        await redis_client.set(
+        
+        ok = await cache_set(
             recommendations_cache_key,
             json.dumps(jobs),
             ex=FREE_RECOMMENDATIONS_CACHE_TTL,
         )
+        if not ok:
+            logger.warning(
+                "Free recommendations cache write failed for %s",
+                recommendations_cache_key,
+            )
+        schedule_job_indexing(jobs)
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content={"provider": "search_jobs", "jobs": jobs},
@@ -211,8 +219,6 @@ async def get_job_recommendations_premium_user(
         resolved_resume_id = await resolve_resume_id_for_recommendations(
             current_user_id, resume_id
         )
-        redis_client = get_redis_client()
-        arq_pool = get_arq_pool()
         ip = request.headers.get("x-forwarded-for") or (
             request.client.host if request.client else None
         )
@@ -222,7 +228,7 @@ async def get_job_recommendations_premium_user(
         cache_input = f"{current_user_id}_{resolved_resume_id}_{city}_{country_code}".lower().strip()
         cache_hash = hashlib.sha256(cache_input.encode()).hexdigest()[:16]
         recommendations_cache_key = f"recommendations_cache:premium:{cache_hash}"
-        cached = await redis_client.get(recommendations_cache_key)
+        cached = await cache_get(recommendations_cache_key)
         if cached:
             return JSONResponse(
                 status_code=status.HTTP_200_OK,
@@ -230,6 +236,7 @@ async def get_job_recommendations_premium_user(
             )
 
         result = await job_recommendation_with_pinecone(
+            current_user_id,
             resolved_resume_id,
             job_city=city or "",
             job_country=country_code or "",
@@ -237,7 +244,6 @@ async def get_job_recommendations_premium_user(
 
         if isinstance(result, list) and result:
             return await _cache_and_return_premium_recommendations(
-                redis_client,
                 recommendations_cache_key,
                 {"provider": "pinecone", "jobs": result},
             )
@@ -246,7 +252,7 @@ async def get_job_recommendations_premium_user(
             resume_text = result.get("resume_text") or ""
             if not resume_text:
                 stored = await get_resume_for_job_recommendation_from_mongodb(
-                    resolved_resume_id
+                    current_user_id, resolved_resume_id
                 )
                 resume_text = (stored or {}).get("full_combined_text") or ""
 
@@ -282,13 +288,11 @@ async def get_job_recommendations_premium_user(
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND, detail="No jobs found"
                 )
-            await arq_pool.enqueue_job("store_jobs_to_pinecone_arq", jobs)
+            
             return await _cache_and_return_premium_recommendations(
-                redis_client,
                 recommendations_cache_key,
                 {"provider": "agent7_jobfinder", "jobs": jobs},
             )
-
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="No jobs found"
         )

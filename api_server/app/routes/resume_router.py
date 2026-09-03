@@ -8,6 +8,7 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Query,
     UploadFile,
     status,
 )
@@ -23,6 +24,12 @@ from app.db.redis import get_redis_client
 from app.helpers.auth_helper import is_premium_user
 from app.middlewares.limit import increment_monthly_usage
 from app.services.resume_analyzer import convert_file_to_bytes, extract_text_from_resume
+from app.services.resume_service import (
+    delete_resume_by_id_and_version,
+    get_resume_by_id_and_version_from_mongodb,
+    get_resume_by_id_from_mongodb,
+    get_resumes_from_mongodb,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -153,20 +160,18 @@ async def analyze_resume_premium(
         if message:
             content["message"] = message
 
-        bg_job = await arq_pool.enqueue_job(
+        await arq_pool.enqueue_job(
             "store_resume_to_mongodb_arq",
             current_user_id,
             resume_pdf.filename,
             resume_bytes,
             result,
         )
-        if bg_job:
-            content["storage_status"] = "enqueued"
-        else:
-            content["storage_status"] = "error"
         await redis_client.incr(usage_key)
         await redis_client.expire(usage_key, 60 * 60 * 24)
-        if includes_job_finder and content.get("job_finder"):
+        job_finder = content.get("job_finder") or {}
+        job_finder_jobs = job_finder.get("jobs") or []
+        if includes_job_finder and job_finder and len(job_finder_jobs) > 0:
             await redis_client.incr(job_finder_usage_key)
             await redis_client.expire(job_finder_usage_key, 60 * 60 * 24 * 3)
         return JSONResponse(content=content, status_code=status.HTTP_200_OK)
@@ -179,4 +184,74 @@ async def analyze_resume_premium(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="INTERNAL_SERVER_ERROR: An error occurred while analyzing the resume. Please try again later.",
+        )
+
+
+@router.get("/api/resumes")
+async def get_resumes(
+    current_user_id: Annotated[int, Depends(get_current_user_id)],
+):
+    try:
+        resumes = await get_resumes_from_mongodb(current_user_id)
+        return JSONResponse(content=resumes, status_code=status.HTTP_200_OK)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting resumes: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="INTERNAL_SERVER_ERROR: An error occurred while getting the resumes. Please try again later.",
+        )
+
+
+@router.get("/api/resumes/{resume_id}")
+async def get_resume(
+    resume_id: str,
+    current_user_id: Annotated[int, Depends(get_current_user_id)],
+    version: Annotated[int | None, Query()] = None,
+):
+    try:
+        if version is None:
+            resume = await get_resume_by_id_from_mongodb(current_user_id, resume_id)
+            return JSONResponse(content=resume, status_code=status.HTTP_200_OK)
+        else:
+            resume = await get_resume_by_id_and_version_from_mongodb(
+                current_user_id, resume_id, version
+            )
+            return JSONResponse(content=resume, status_code=status.HTTP_200_OK)
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error getting resume: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="INTERNAL_SERVER_ERROR: An error occurred while getting the resume. Please try again later.",
+        )
+
+
+@router.delete("/api/resumes/{resume_id}")
+async def delete_resume(
+    resume_id: str,
+    current_user_id: Annotated[int, Depends(get_current_user_id)],
+    version: Annotated[int, Query()],
+):
+    try:
+        await delete_resume_by_id_and_version(
+            current_user_id, resume_id, version
+        )
+        return JSONResponse(
+            content={"message": "Resume deleted successfully."},
+            status_code=status.HTTP_200_OK,
+        )
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error deleting resume: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="INTERNAL_SERVER_ERROR: An error occurred while deleting the resume. Please try again later.",
         )

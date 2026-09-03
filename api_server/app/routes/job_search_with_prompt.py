@@ -6,9 +6,9 @@ from fastapi.responses import JSONResponse
 
 from app.ai_agents.agents.agent7_jobfinder import jobfinder_agent
 from app.auth.dependencies import get_current_user_id
-from app.db.arq import get_arq_pool
 from app.db.redis import get_redis_client
 from app.helpers.auth_helper import is_premium_user
+from app.helpers.job_indexing import schedule_job_indexing
 from app.helpers.llm_call import agent7_jobfinder_format_result
 from app.services.resume_analyzer import convert_file_to_bytes, extract_text_from_resume
 
@@ -73,28 +73,25 @@ async def search_jobs_with_prompt(
             resume_text=resume_text, user_requirements=prompt
         )
         jobfinder_result = agent7_jobfinder_format_result(messages, raw_jobs)
-        if not jobfinder_result.get("error") and jobfinder_result.get("jobs"):
-            arq_pool = get_arq_pool()
-            await arq_pool.enqueue_job(
-                "store_jobs_to_pinecone_arq", jobfinder_result["jobs"]
+        if jobfinder_result.get("error") and not jobfinder_result.get("jobs"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=jobfinder_result["error"],
             )
-        else:
-            error = jobfinder_result.get("error")
-            if error:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST, detail=error
-                )
-        explanation_message = jobfinder_result["message"]
-        jobs = jobfinder_result["jobs"]
-        await redis_client.incr(limit_cache_key)
-        if not is_premium_user:
-            await redis_client.expire(limit_cache_key, 60 * 60 * 24 * 15)
-        else:
-            await redis_client.expire(limit_cache_key, 60 * 60 * 24 * 3)
+        message = jobfinder_result["message"]
+        jobs = jobfinder_result.get("jobs") or []
+        if jobs:
+            schedule_job_indexing(jobs)
+            await redis_client.incr(limit_cache_key)
+            if not is_premium_user:
+                await redis_client.expire(limit_cache_key, 60 * 60 * 24 * 15)
+            else:
+                await redis_client.expire(limit_cache_key, 60 * 60 * 24 * 3)
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content={"explanation_message": explanation_message, "jobs": jobs},
+            content={"message": message, "jobs": jobs},
         )
+
     except HTTPException:
         raise
     except Exception as e:
