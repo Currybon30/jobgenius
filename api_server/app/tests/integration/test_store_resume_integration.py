@@ -88,6 +88,7 @@ async def test_store_resume_to_mongodb_integration(infra, tmp_path, monkeypatch)
     assert doc["version"] == 1
     assert doc["filename"] == TEST_FILENAME
     assert doc["storage_path"] == f"{TEST_USER_ID}/{TEST_FILENAME}/1.pdf"
+    assert doc.get("content_sha256")
     assert "analysis" in doc
     assert doc["analysis"]["target_role"] == "Software Engineer"
 
@@ -121,18 +122,26 @@ async def test_store_resume_to_mongodb_integration(infra, tmp_path, monkeypatch)
         {"resume_id": resume_id},
         sort=[("version", -1)],
     )
-    assert latest["version"] == 2
-    assert latest["storage_path"] == f"{TEST_USER_ID}/{TEST_FILENAME}/2.pdf"
+    assert latest["version"] == 1
+    assert latest["storage_path"] == f"{TEST_USER_ID}/{TEST_FILENAME}/1.pdf"
+    assert latest.get("content_sha256")
 
     updated_rec = await db["resume_for_job_recommendation"].find_one(
         {"resume_id": resume_id}
     )
-    assert updated_rec["version"] == 2
+    assert updated_rec["version"] == 1
 
-    s3.head_object(
-        Bucket=settings.S3_BUCKET_NAME,
-        Key=latest["storage_path"],
+    changed_pdf = pdf_bytes + b"\x00"
+    ok_changed = await store_resume_to_mongodb(
+        TEST_USER_ID, TEST_FILENAME, changed_pdf, SAMPLE_ANALYSIS
     )
+    assert ok_changed is True
+    bumped = await db["resumes"].find_one(
+        {"resume_id": resume_id},
+        sort=[("version", -1)],
+    )
+    assert bumped["version"] == 2
+    assert bumped["storage_path"] == f"{TEST_USER_ID}/{TEST_FILENAME}/2.pdf"
 
     # Cleanup left out on purpose so you can inspect MongoDB + S3 after the run:
     # user_id=999001, resume_id=999001_integration_test_resume.pdf
