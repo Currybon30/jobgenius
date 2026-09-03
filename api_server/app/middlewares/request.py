@@ -1,6 +1,7 @@
 import logging
 import time
 
+from fastapi import status
 from starlette.datastructures import MutableHeaders
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -67,8 +68,13 @@ class RequestMiddleware:
             request.client.host if request.client else ""
         )
         ip = ip.split(",")[0].strip()
-        anonymous_uuid = str(request.cookies.get("anonymous_uuid"))
-
+        anonymous_uuid = request.cookies.get("anonymous_uuid")
+        if not anonymous_uuid:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"detail": "Anonymous UUID is required."},
+            )
+        anonymous_uuid = str(anonymous_uuid)
         rate_key = f"rate:{anonymous_uuid}_{ip}"
         rate = await redis_client.get(rate_key)
         if rate is None:
