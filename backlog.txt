@@ -1,6 +1,9 @@
 Tuong Nguyen Pham
 Updates in Sep 3rd, 2026
 
+Upcoming implementations:
+- frontend
+
 Next version of the API_SERVER:
 - Implement production-like on Redis CancelledErrors which is currently covered by asyncio.wait_for(...)
 - Handle the case where job finder returns no jobs, but the message has a message with some jobs to users.
