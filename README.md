@@ -1,3 +1,3 @@
-# JobGenius - A Job Recommender System
+# JobGenius - Resume Analyzer and Job Recommender System
 
 In Progress...
