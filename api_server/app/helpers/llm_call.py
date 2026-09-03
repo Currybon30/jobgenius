@@ -82,6 +82,7 @@ def safe_parse(response: str, agent_name="unknown"):
 def _normalize_jobfinder_jobs(raw_jobs: Any) -> list[dict]:
     """Accept MCP / JSearch / JSON string shapes → list of job dicts."""
     if not raw_jobs:
+        logger.error("[ERROR] agent7_jobfinder: returned no jobs")
         return []
 
     # Already a list of JSearch jobs
@@ -131,7 +132,7 @@ def agent7_jobfinder_format_result(messages: list[dict[str, Any]], raw_jobs: lis
         formatted_jobs = _normalize_jobfinder_jobs(raw_jobs)
         if not formatted_jobs:
             return {
-                "message": "",
+                "message": formatted_message,
                 "jobs": [],
                 "error": "No jobs found"
             }
