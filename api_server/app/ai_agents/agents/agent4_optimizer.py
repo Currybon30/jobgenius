@@ -204,6 +204,7 @@ async def optimizer_agent(
         - Address low ATS / match scores by emphasizing true overlaps (when JD exists)
 
         === OUTPUT FORMAT ===
+        MUST RETURN VALID JSON.
         Return ONLY valid JSON (no markdown fences):
         {{
         "optimized_resume": "",
@@ -232,6 +233,7 @@ async def optimizer_agent(
 
     response = await llm_call(prompt)
 
-    logger.info("Agent 4: Optimizer agent response received")
+    if response:
+        logger.info("Agent 4: Optimizer agent response received")
 
     return safe_parse(response, "optimizer_agent")

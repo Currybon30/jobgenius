@@ -168,7 +168,7 @@ def ats_agent_premium(resume_text: str, agent2_result: dict, jd_text: Optional[s
     - Certifications
     - Languages
     - Professional links
-    - Volunteer section (a plus if no experience section and relevant to the resume title and/or job description)
+    - Volunteer section
     These features are returned by the agent2 analyzer (premium version)
     These plus features are bonus points for the ATS score
     Total score: 1.0 + bonus points

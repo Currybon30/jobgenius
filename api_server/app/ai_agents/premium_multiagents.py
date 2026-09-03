@@ -1,5 +1,7 @@
 from typing import Any, Literal, NotRequired, TypedDict
 
+from langgraph.graph import END, START, StateGraph
+
 from app.ai_agents.agents.agent1_intent import intent_goal_agent
 from app.ai_agents.agents.agent2_analyzer import analyzer_agent_premium
 from app.ai_agents.agents.agent3_ats import ats_agent_premium
@@ -7,7 +9,6 @@ from app.ai_agents.agents.agent4_optimizer import optimizer_agent
 from app.ai_agents.agents.agent6_finalizer import finalizer_agent_premium
 from app.ai_agents.agents.agent7_jobfinder import jobfinder_agent
 from app.helpers.llm_call import agent7_jobfinder_format_result
-from langgraph.graph import END, START, StateGraph
 
 
 class GraphState(TypedDict):
@@ -85,11 +86,9 @@ async def agent7_node(state: GraphState) -> dict[str, Any]:
     analyzed_results_dict = {
         "intent": state.get("intent") or {},
         "analyzer": state.get("analyzer") or {},
-        "ats": state.get("ats") or {},
-        "optimizer": state.get("optimizer") or {},
     }
     messages, raw_jobs = await jobfinder_agent(
-        state["resume_text"], analyzed_results_dict
+        resume_text=state["resume_text"], analyzed_results_dict=analyzed_results_dict
     )
     jobfinder_result = agent7_jobfinder_format_result(messages, raw_jobs)
     return {"job_finder": jobfinder_result}

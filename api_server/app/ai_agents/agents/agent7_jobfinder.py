@@ -1,11 +1,15 @@
 import json
+import logging
 
-from app.core.config import settings
-from app.helpers.job_indexing import index_jobs_in_background
 from langchain.agents import create_agent
 from langchain_core.messages import ToolMessage
-from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_ollama import ChatOllama
+
+from app.core.config import settings
+from app.db.mcp import get_mcp_client_tools
+from app.helpers.job_indexing import index_jobs_in_background
+
+logger = logging.getLogger(__name__)
 
 
 async def jobfinder_agent(
@@ -13,24 +17,14 @@ async def jobfinder_agent(
     analyzed_results_dict: dict | None = None,
     user_requirements: str = "",
 ):
-    mcp_client = MultiServerMCPClient(
-        {
-            "job_service": {
-                "command": "python",
-                "args": ["-m", "app.mcp.job_mcp"],
-                "transport": "stdio",
-            }
-        }
-    )
-
-    tools = await mcp_client.get_tools()
+    mcp_client_tools = await get_mcp_client_tools()
 
     model = ChatOllama(
         model=settings.OLLAMA_MODEL,
         base_url=settings.OLLAMA_HOST,
     )
 
-    agent = create_agent(model=model, tools=tools)
+    agent = create_agent(model=model, tools=mcp_client_tools)
 
     messages = [
         {
@@ -40,8 +34,16 @@ async def jobfinder_agent(
                 An analyzed results dictionary from previous agents or user requirements are optional.
                 Your task is to find the best jobs for the user based on the original resume text and the analyzed results dictionary or user requirements.
                 You are also provided with a tool to search for jobs.
-                Note that you need to self-analyze the input to determine the best jobs for the user.
-                You must return the jobs with a beautiful and concise description of the job for later summary.
+                Note that you need to self-analyze the input to determine the best query to search for jobs for the user.
+                Allowed actions:
+                - Call the search_jobs tool
+                - Briefly explain why returned jobs fit
+
+                Forbidden actions:
+                - Do NOT rewrite the resume
+                - Do NOT optimize, improve, or reformat the resume
+                - Do NOT invent jobs without calling search_jobs
+                You must return the jobs with a beautiful and concise description of the job for next steps.
             """,
         }
     ]
@@ -51,9 +53,9 @@ async def jobfinder_agent(
             {
                 "role": "user",
                 "content": f"""
-                Original resume text: {resume_text}
-                Analyzed results dictionary: {analyzed_results_dict}
-            """,
+                    Original resume text: {resume_text}
+                    Analyzed results dictionary: {json.dumps(analyzed_results_dict, indent=2)}
+                """,
             }
         )
     else:
@@ -61,13 +63,24 @@ async def jobfinder_agent(
             {
                 "role": "user",
                 "content": f"""
-                Original resume text: {resume_text}
-                User requirements: {user_requirements}
-            """,
+                    Original resume text: {resume_text}
+                    User requirements: {user_requirements}
+                """,
             }
         )
 
     result = await agent.ainvoke({"messages": messages})
+    if result["messages"][-1].content is None:
+        logger.warning(
+            "Agent 7: Job finder agent response did not call the search_jobs tool to find jobs"
+        )
+        messages.append(
+            {
+                "role": "system",
+                "content": "[SYSTEM ERROR] Job finder agent response did not call the search_jobs tool to find jobs",
+            }
+        )
+        return messages, None
 
     raw_jobs = None
 
@@ -101,30 +114,9 @@ async def jobfinder_agent(
     )
 
     result = await agent.ainvoke({"messages": messages})
+    if result:
+        logger.info("Agent 7: Job finder agent response received")
 
     messages.append({"role": "assistant", "content": result["messages"][-1].content})
 
     return messages, raw_jobs
-
-
-# if __name__ == "__main__":
-#     import asyncio
-#     resume_text = """
-#     I am a software engineer with 5 years of experience in Python and Django. I have a passion for building web applications and I am looking for a new challenge.
-#     """
-#     analyzed_results_dict = {
-#         "skills": ["Python", "Django", "JavaScript", "React", "SQL"],
-#         "experience": "5 years",
-#         "education": "Bachelor of Science in Computer Science",
-#         "location": "San Francisco, CA",
-#         "job_type": "Full-time",
-#         "job_category": "Software Engineering",
-#     }
-#     messages, raw_jobs = asyncio.run(jobfinder_agent(resume_text=resume_text, analyzed_results_dict=analyzed_results_dict))
-#     print_results = ""
-#     for msg in messages:
-#         print_results += msg["role"] + ": " + msg["content"] + "\n"
-#     print(raw_jobs)
-
-#     with open("jobfinder_results.txt", "w") as f:
-#         f.write(print_results)

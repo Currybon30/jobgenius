@@ -61,5 +61,7 @@ async def intent_goal_agent(
     """
 
     response = await llm_call(prompt)
+    if response:
+        logger.info("Agent 1: Intent goal agent response received")
 
     return safe_parse(response, agent_name="intent_goal_agent")

@@ -70,7 +70,7 @@ def analyzer_agent_premium(resume_text, industry: str = "", jd_text: str = ""):
     - Certifications
     - Languages
     - Professional links
-    - Volunteer section (a plus if no experience section and relevant to the resume title and/or job description)
+    - Volunteer section
     """
     results = {}
     analyzer_agent_free_tier_result = analyzer_agent_free_tier(
@@ -85,11 +85,7 @@ def analyzer_agent_premium(resume_text, industry: str = "", jd_text: str = ""):
     )
     results["languages"] = extract_languages(sections.get("languages", ""))
     results["professional_links"] = extract_professional_links(resume_text)
-    if (
-        results["has_experience"] == False
-        and results["has_projects"] == False
-        and has_volunteer_bool
-    ):
+    if has_volunteer_bool:
         results["has_volunteer"] = True
     else:
         results["has_volunteer"] = False

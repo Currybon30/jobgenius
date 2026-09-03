@@ -191,7 +191,8 @@ async def finalizer_agent_free_tier(
 
     response = await llm_call(prompt)
 
-
+    if response:
+        logger.info("Agent 6: Finalizer agent response received")
     return safe_parse(response, "finalizer_agent_free_tier")
 
 
@@ -382,7 +383,7 @@ async def finalizer_agent_premium(
         8. Ground every claim in provided data — never invent employers, skills, metrics, or credentials.
         9. If years_exp is 0 due to missing headings, recommend structure fixes — do not say "0 years experience".
         10. Be substantially deeper than free tier: more detail, more strategy, more actionable sequencing.
-        11. If the resume does not have an experience section or projects section, but has a volunteer section, mention it as a plus. However, if the volunteer section is not relevant to the target role or industry, tell the user try to make it relevant to the target role or industry (give this feedback to experience_feedback - be clear that this is a plus for volunteer section if no experience section and projects section is present).
+        11. A volunteer section, mention it as a plus.
 
         === OUTPUT FORMAT ===
         Return ONLY valid JSON (no markdown fences):
@@ -425,5 +426,7 @@ async def finalizer_agent_premium(
         """
 
     response = await llm_call(prompt)
+    if response:
+        logger.info("Agent 6: Finalizer agent response received")
 
     return safe_parse(response, "finalizer_agent_premium")
