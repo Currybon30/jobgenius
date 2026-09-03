@@ -1,0 +1,10 @@
+Tuong Nguyen Pham
+Updates in Sep 3rd, 2026
+
+Next version of the API_SERVER:
+- Implement production-like on Redis CancelledErrors which is currently covered by asyncio.wait_for(...)
+- Handle the case where job finder returns no jobs, but the message has a message with some jobs to users.
+
+
+Next version of the AUTH_SERVER:
+- Since Spring Boot supports scheduling tasks, we will use it to delete the resumes and jobs from MongoDB and S3 after a certain period of time.
