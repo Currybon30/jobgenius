@@ -1,12 +1,13 @@
 import asyncio
+import codecs
 import json
 import logging
 import re
 from typing import Any
-import codecs
+
+from langchain_ollama import OllamaLLM
 
 from app.core.config import settings
-from langchain_ollama import OllamaLLM
 
 logger = logging.getLogger(__name__)
 
