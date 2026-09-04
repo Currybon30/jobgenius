@@ -44,24 +44,23 @@ async def search_jobs_with_prompt(
             else f"job_search_with_prompt_free_limit:{current_user_id}"
         )
         if not is_premium_user:
-            limit = await redis_client.get(limit_cache_key)
-            if limit and int(limit) >= 1:
+            limit_count = await redis_client.incr(limit_cache_key)
+            if limit_count == 1:
+                await redis_client.expire(limit_cache_key, 60 * 60 * 24 * 15)
+            if limit_count > 1:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="You have reached the limit of job search with prompt. Please try again later.",
-                )
-            elif not limit or int(limit) < 1:
-                await redis_client.set(limit_cache_key, 0)
+                    )
         else:
-            limit = await redis_client.get(limit_cache_key)
-            if limit and int(limit) >= 1:
+            limit_count = await redis_client.incr(limit_cache_key)
+            if limit_count == 1:
+                await redis_client.expire(limit_cache_key, 60 * 60 * 24 * 3)
+            if limit_count > 1:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="You have reached the limit of job search with prompt. Please try again later.",
                 )
-            elif not limit or int(limit) < 1:
-                await redis_client.set(limit_cache_key, 0)
-
         resume_bytes = await convert_file_to_bytes(resume_pdf)
         resume_text = extract_text_from_resume(resume_pdf, resume_bytes)
         if not resume_text:
