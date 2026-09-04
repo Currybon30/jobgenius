@@ -1,5 +1,6 @@
 import logging
 
+from fastapi import HTTPException, status
 from fastapi.responses import JSONResponse
 
 from app.db.redis import get_redis_client
@@ -16,13 +17,7 @@ MONTH_WINDOW = 30 * 24 * 60 * 60  # 30 days in seconds
 async def increment_monthly_usage(anonymous_uuid: str):
     redis_client = get_redis_client()
     usage_key = f"usage:{anonymous_uuid}"
-    usage = await redis_client.get(usage_key)
-
-    if usage is not None:
-        await redis_client.incr(usage_key)
+    count = await redis_client.incr(usage_key)
+    if count == 1:
         await redis_client.expire(usage_key, MONTH_WINDOW)
-    else:
-        return JSONResponse(
-            status_code=500,
-            content={"detail": f"Usage key '{usage_key}' is not found in Redis"},
-        )
+    return count
