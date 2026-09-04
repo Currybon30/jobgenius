@@ -22,7 +22,7 @@ from app.auth.dependencies import get_current_user_id
 from app.db.arq import get_arq_pool
 from app.db.redis import get_redis_client
 from app.helpers.auth_helper import is_premium_user
-from app.middlewares.limit import increment_monthly_usage
+from app.helpers.limit_helper import increment_monthly_usage
 from app.services.resume_analyzer import convert_file_to_bytes, extract_text_from_resume
 from app.services.resume_service import (
     delete_resume_by_id_and_version,
