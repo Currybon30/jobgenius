@@ -97,44 +97,30 @@ def _schedule_pool_reset(reason: str) -> None:
     loop.create_task(_run())
 
 
-async def cache_get(key: str, timeout: float = CACHE_GET_TIMEOUT) -> str | None:
+async def cache_get(key: str) -> str | None:
     """GET a cache value; timeout/cancel triggers pool reset."""
-    client = get_redis_client()
     try:
-        return await asyncio.wait_for(client.get(key), timeout=timeout)
-    except asyncio.TimeoutError:
-        logger.warning("Redis GET timed out for key %s", key)
-        _schedule_pool_reset(f"GET timeout key={key}")
+        client = get_redis_client()
+        return await client.get(key)
+    except (asyncio.TimeoutError, asyncio.CancelledError, Exception):
+        logger.exception("Redis GET failed for key %s", key)
+        _schedule_pool_reset(f"GET error key={key}")
         return None
-    except asyncio.CancelledError:
-        logger.warning("Redis GET cancelled for key %s; scheduling pool reset", key)
-        _schedule_pool_reset(f"GET cancel key={key}")
-        raise
-
 
 async def cache_set(
     key: str,
     value: str,
     ex: int | None = None,
-    timeout: float = CACHE_SET_TIMEOUT,
 ) -> bool:
     """
     SET a cache value. Returns False on timeout/error so callers can still
     return their payload without depending on Redis.
     """
-    client = get_redis_client()
     try:
-        await asyncio.wait_for(client.set(key, value, ex=ex), timeout=timeout)
+        client = get_redis_client()
+        await client.set(key, value, ex=ex)
         return True
-    except asyncio.TimeoutError:
-        logger.warning("Redis SET timed out for key %s", key)
-        _schedule_pool_reset(f"SET timeout key={key}")
-        return False
-    except asyncio.CancelledError:
-        logger.warning("Redis SET cancelled for key %s; scheduling pool reset", key)
-        _schedule_pool_reset(f"SET cancel key={key}")
-        raise
-    except Exception:
+    except (asyncio.TimeoutError, asyncio.CancelledError, Exception):
         logger.exception("Redis SET failed for key %s", key)
         _schedule_pool_reset(f"SET error key={key}")
         return False
