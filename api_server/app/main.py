@@ -15,7 +15,7 @@ from app.db.pinecone import close_pinecone, init_pinecone
 from app.db.redis import close_redis, init_redis
 from app.db.s3 import close_s3_client, init_s3_client
 from app.db.session import engine
-from app.middlewares.request import RequestMiddleware
+from app.middlewares.mybasehttpmiddleware import MyBaseHTTPMiddleware
 from app.routes.job_recommender_router import router as job_recommender_router
 from app.routes.job_search_with_prompt import router as job_search_with_prompt_router
 from app.routes.resume_router import router as resume_router
@@ -73,7 +73,7 @@ async def health_check():
     return {"status": "ok"}
 
 
-app.add_middleware(RequestMiddleware)
+app.add_middleware(MyBaseHTTPMiddleware)
 
 app.include_router(user_router)
 app.include_router(resume_router)
