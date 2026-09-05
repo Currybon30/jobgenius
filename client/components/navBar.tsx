@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { handleLogout } from "@/auth/api";
 import { clearAuthSession, useAuth } from "@/contexts/AuthContext";
 import { getUserPlan } from "@/services/userServices";
@@ -14,13 +14,14 @@ const NAV_LINKS = [
   { label: "Resume Analyzer", href: "/resume-analyzer" },
   { label: "Jobs", href: "/jobs" },
   { label: "About", href: "/about" },
+  { label: "FAQs", href: "/faqs" },
   { label: "Contact", href: "/contact" },
 ] as const;
 
 const PROFILE_LINKS = [
   { label: "My Account", href: "/my-account" },
   { label: "Settings", href: "/settings" },
-  { label: "Help", href: "/help" },
+  { label: "Help", href: "/faqs" },
 ] as const;
 
 function ProfileIcon() {
@@ -35,6 +36,29 @@ function ProfileIcon() {
     >
       <circle cx="12" cy="8" r="4" />
       <path d="M5 20c1.5-3.5 4.5-5.5 7-5.5s5.5 2 7 5.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function MenuIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      className="navbar-menu-icon"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden="true"
+    >
+      {open ? (
+        <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+      ) : (
+        <>
+          <path d="M4 7h16" strokeLinecap="round" />
+          <path d="M4 12h16" strokeLinecap="round" />
+          <path d="M4 17h16" strokeLinecap="round" />
+        </>
+      )}
     </svg>
   );
 }
@@ -54,7 +78,11 @@ export function NavBar() {
   const router = useRouter();
   const { status, refreshAuth } = useAuth();
   const [userPlanState, setUserPlanState] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const planFetchedRef = useRef(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+  const menuId = useId();
 
   const checkUserPlan = useCallback(async () => {
     try {
@@ -75,6 +103,44 @@ export function NavBar() {
     planFetchedRef.current = true;
     void checkUserPlan();
   }, [status, checkUserPlan]);
+
+  useEffect(() => {
+    setMenuOpen(false);
+    setProfileOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    document.body.classList.add("navbar-menu-lock");
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.classList.remove("navbar-menu-lock");
+    };
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (!profileOpen) return;
+
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (target && !profileMenuRef.current?.contains(target)) {
+        setProfileOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+    };
+  }, [profileOpen]);
 
   const onLogout = async () => {
     try {
@@ -109,9 +175,7 @@ export function NavBar() {
         Upgrade ★
       </button>
     ) : (
-      <p className="plan-banner is-premium">
-        {userPlanState}
-      </p>
+      <p className="plan-banner is-premium">{userPlanState}</p>
     );
   };
 
@@ -122,12 +186,17 @@ export function NavBar() {
 
     if (status === "authenticated") {
       return (
-        <div className="profile-menu">
+        <div
+          className={`profile-menu${profileOpen ? " is-open" : ""}`}
+          ref={profileMenuRef}
+        >
           <button
             type="button"
             className="profile-trigger"
             aria-label="Account menu"
             aria-haspopup="true"
+            aria-expanded={profileOpen}
+            onClick={() => setProfileOpen((open) => !open)}
           >
             <ProfileIcon />
           </button>
@@ -138,6 +207,7 @@ export function NavBar() {
                 href={href}
                 className="profile-dropdown-item"
                 role="menuitem"
+                onClick={() => setProfileOpen(false)}
               >
                 {label}
               </Link>
@@ -163,7 +233,7 @@ export function NavBar() {
   };
 
   return (
-    <header className="navbar">
+    <header className={`navbar${menuOpen ? " is-menu-open" : ""}`}>
       <div className="navbar-inner">
         <Link href="/" className="navbar-brand">
           JobGenius
@@ -183,11 +253,47 @@ export function NavBar() {
 
         <div className="navbar-end">
           {renderPlanBanner()}
-          <div className="navbar-actions">
-            {renderAuthAction()}
-          </div>
+          <div className="navbar-actions">{renderAuthAction()}</div>
+          <button
+            type="button"
+            className="navbar-menu-btn"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
+            aria-controls={menuId}
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            <MenuIcon open={menuOpen} />
+          </button>
         </div>
       </div>
+
+      <div
+        id={menuId}
+        className={`navbar-drawer${menuOpen ? " is-open" : ""}`}
+        hidden={!menuOpen}
+      >
+        <nav className="navbar-drawer-nav" aria-label="Mobile navigation">
+          {NAV_LINKS.map(({ label, href }) => (
+            <Link
+              key={href}
+              href={href}
+              className={`navbar-drawer-link${isActive(href) ? " is-active" : ""}`}
+              onClick={() => setMenuOpen(false)}
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
+      </div>
+
+      {menuOpen ? (
+        <button
+          type="button"
+          className="navbar-backdrop"
+          aria-label="Close menu"
+          onClick={() => setMenuOpen(false)}
+        />
+      ) : null}
     </header>
   );
 }

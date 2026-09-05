@@ -1,16 +1,57 @@
 @import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap");
 
 :root {
   --page-bg: #e6effc;
+  --page-bg-deep: #d4e4f9;
+  --brand: #2563eb;
+  --brand-hover: #1d4ed8;
+  --brand-soft: #dbeafe;
+  --ink: #0f172a;
+  --ink-soft: #334155;
+  --muted: #64748b;
+  --line: rgba(148, 163, 184, 0.35);
+  --surface: rgba(255, 255, 255, 0.72);
+  --font-display: "Outfit", "Segoe UI", sans-serif;
+  --font-body: "Figtree", "Segoe UI", sans-serif;
+  --content-width: 1120px;
+  --section-pad: clamp(3.5rem, 8vw, 6rem);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
+  margin: 0;
   background: var(--page-bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
 }
 
-.footer {
-  background: var(--page-bg);
-  padding: 1rem;
-  text-align: center;
-  margin-top: auto;
+main {
+  width: 100%;
+}
+
+a {
+  color: inherit;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+::selection {
+  background: var(--brand-soft);
+  color: var(--ink);
 }

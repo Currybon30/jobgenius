@@ -42,9 +42,19 @@ function clearStoredStatus() {
   sessionStorage.removeItem(AUTH_STATUS_STORAGE_KEY);
 }
 
+const AUTH_RESOLVE_TIMEOUT_MS = 4000;
+
 async function resolveAuthStatus(): Promise<AuthStatus> {
   try {
-    const user = await getCurrentUser();
+    const user = await Promise.race([
+      getCurrentUser(),
+      new Promise<never>((_, reject) => {
+        window.setTimeout(
+          () => reject(new Error("Auth check timed out")),
+          AUTH_RESOLVE_TIMEOUT_MS,
+        );
+      }),
+    ]);
     return user ? "authenticated" : "unauthenticated";
   } catch {
     return "unauthenticated";
@@ -102,7 +112,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={value}>
+      <div suppressHydrationWarning>
+        {children}
+      </div>
+    </AuthContext.Provider>
   );
 }
 

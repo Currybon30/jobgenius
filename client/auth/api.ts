@@ -9,7 +9,7 @@ const authConfig = (options?: AuthOptions) => ({
 export async function handleAnonymousReady(): Promise<void> {
     try {
         await axios.get(
-            `${process.env.NEXT_PUBLIC_SPRING_API_URL}/auth/anonymous_ready`,
+            `${process.env.NEXT_PUBLIC_SPRING_API_URL}/anonymous_ready`,
             { withCredentials: true },
         );
     }

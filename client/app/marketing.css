@@ -1,0 +1,152 @@
+/* Shared marketing page language */
+
+.mkt {
+  width: 100%;
+  overflow-x: clip;
+}
+
+.mkt-shell {
+  width: min(100% - 2.5rem, var(--content-width));
+  margin-inline: auto;
+}
+
+.mkt-kicker {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brand);
+}
+
+.mkt-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2rem, 4.5vw, 3.1rem);
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.mkt-lead {
+  margin: 1rem 0 0;
+  max-width: 38rem;
+  font-size: 1.08rem;
+  color: var(--ink-soft);
+}
+
+.mkt-section {
+  padding: var(--section-pad) 0;
+}
+
+.mkt-section + .mkt-section {
+  border-top: 1px solid var(--line);
+}
+
+.mkt-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  margin-top: 1.75rem;
+}
+
+.mkt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.85rem;
+  padding: 0.7rem 1.35rem;
+  border-radius: 12px;
+  font-family: var(--font-body);
+  font-size: 0.98rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.18s ease;
+}
+
+.mkt-btn:hover {
+  transform: translateY(-1px);
+}
+
+.mkt-btn-primary {
+  background: var(--brand);
+  color: #fff;
+  border: 1px solid transparent;
+}
+
+.mkt-btn-primary:hover {
+  background: var(--brand-hover);
+}
+
+.mkt-btn-ghost {
+  background: transparent;
+  color: var(--ink-soft);
+  border: 1px solid rgba(100, 116, 139, 0.45);
+}
+
+.mkt-btn-ghost:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.mkt-page-hero {
+  position: relative;
+  padding: clamp(3rem, 7vw, 5rem) 0 clamp(2.5rem, 5vw, 3.5rem);
+  background:
+    radial-gradient(ellipse 80% 60% at 12% 0%, rgba(37, 99, 235, 0.16), transparent 55%),
+    radial-gradient(ellipse 55% 45% at 92% 18%, rgba(14, 165, 233, 0.14), transparent 50%),
+    linear-gradient(180deg, #eef4fd 0%, var(--page-bg) 100%);
+}
+
+.mkt-page-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(37, 99, 235, 0.08) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 85%);
+  pointer-events: none;
+}
+
+.mkt-page-hero .mkt-shell {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes mkt-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mkt-rise {
+  animation: mkt-rise 0.7s ease both;
+}
+
+.mkt-rise-delay {
+  animation-delay: 0.12s;
+}
+
+.mkt-rise-delay-2 {
+  animation-delay: 0.22s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mkt-rise,
+  .mkt-rise-delay,
+  .mkt-rise-delay-2 {
+    animation: none;
+  }
+}

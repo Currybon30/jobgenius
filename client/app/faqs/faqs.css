@@ -1,0 +1,83 @@
+.faqs-inline-link {
+  color: var(--brand);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.faqs-inline-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.faqs-list {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 46rem;
+}
+
+.faqs-item {
+  border-bottom: 1px solid var(--line);
+  padding: 0.15rem 0 0.85rem;
+}
+
+.faqs-item summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 0;
+  font-family: var(--font-display);
+  font-size: 1.12rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  transition: color 0.18s ease;
+}
+
+.faqs-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.faqs-item summary::after {
+  content: "+";
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--brand);
+  font-family: var(--font-body);
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1;
+  transition:
+    transform 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.faqs-item[open] summary {
+  color: var(--brand);
+}
+
+.faqs-item[open] summary::after {
+  content: "–";
+  background: var(--brand);
+  color: #fff;
+}
+
+.faqs-item summary:hover {
+  color: var(--brand);
+}
+
+.faqs-item p {
+  margin: 0 0 0.5rem;
+  padding-right: 2rem;
+  color: var(--ink-soft);
+  font-size: 1.02rem;
+  line-height: 1.6;
+  animation: mkt-rise 0.35s ease both;
+}

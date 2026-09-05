@@ -1,0 +1,66 @@
+.about-split {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 2rem 3rem;
+  align-items: start;
+}
+
+.about-prose {
+  display: grid;
+  gap: 1.1rem;
+  color: var(--ink-soft);
+  font-size: 1.06rem;
+}
+
+.about-prose p {
+  margin: 0;
+}
+
+.about-values {
+  background:
+    radial-gradient(ellipse 40% 50% at 0% 50%, rgba(37, 99, 235, 0.1), transparent 55%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.4), transparent);
+}
+
+.about-value-list {
+  margin: 2.25rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 1.75rem;
+}
+
+.about-value-list li {
+  display: grid;
+  gap: 0.35rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.about-value-list li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.about-value-list strong {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.about-value-list span {
+  color: var(--ink-soft);
+  font-size: 1.02rem;
+}
+
+.about-next .mkt-lead {
+  margin-bottom: 0;
+}
+
+@media (max-width: 800px) {
+  .about-split {
+    grid-template-columns: 1fr;
+  }
+}
