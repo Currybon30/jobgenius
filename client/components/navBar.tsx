@@ -11,7 +11,7 @@ import { toast } from "react-toastify";
 
 const NAV_LINKS = [
   { label: "Home", href: "/" },
-  { label: "Resume Analyzer", href: "/resume-analyzer" },
+  { label: "Resume Analyzer", href: "/analyzer" },
   { label: "Jobs", href: "/jobs" },
   { label: "About", href: "/about" },
   { label: "FAQs", href: "/faqs" },
