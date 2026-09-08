@@ -1,9 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { NavBar } from "@/components/navBar";
-import { Footer } from "@/components/footer";
 import { Providers } from "./providers";
 import "./globals.css";
-import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 export const metadata: Metadata = {
@@ -40,19 +37,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className="min-h-screen flex flex-col" suppressHydrationWarning>
-        <Providers>
-          <NavBar />
-          <main className="flex-1 flex flex-col">{children}</main>
-          <Footer />
-          <ToastContainer
-            position="top-right"
-            autoClose={2000}
-            hideProgressBar={true}
-            style={{ marginTop: "60px" }}
-          />
-        </Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
