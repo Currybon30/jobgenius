@@ -3,11 +3,26 @@ Updates in Sep 3rd, 2026
 
 Upcoming implementations:
 - frontend
+- create index for the SQL
 
 Next version of the API_SERVER:
 - Handle the case where job finder returns no jobs, but the message has a message with some jobs to users.
+- Scale and harden the job-based architecture. 
 
 
 Next version of the AUTH_SERVER:
 - Implement logging to track the usage of the API.
 - Since Spring Boot supports scheduling tasks, we will use it to delete the resumes and jobs from MongoDB and S3 after a certain period of time.
+- Implement login with Facebook.
+
+3rd version of the AUTH_SERVER:
+- Implement forgot password feature with email verification.
+
+4th version of the AUTH_SERVER:
+- Implement email verification for account activation.
+
+5th version of the AUTH_SERVER:
+- Implement MFA for account security.
+
+Traffic test:
+- Using JMeter to test the traffic of the API.
