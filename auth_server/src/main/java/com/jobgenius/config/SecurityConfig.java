@@ -1,8 +1,5 @@
 package com.jobgenius.config;
 
-import java.util.Date;
-import java.util.Objects;
-
 import com.jobgenius.models.RefreshToken;
 import com.jobgenius.models.User;
 import com.jobgenius.repositories.RefreshTokenRepository;
@@ -13,6 +10,8 @@ import com.jobgenius.security.RateLimitingFilter;
 import com.jobgenius.services.JwtService;
 import com.jobgenius.services.UserService;
 import com.jobgenius.utils.TokenHelper;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,8 +32,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
 
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
+import java.util.Date;
+import java.util.Objects;
 
 @RequiredArgsConstructor
 @Configuration
@@ -160,6 +159,9 @@ public class SecurityConfig {
                 .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(rateLimitingFilter, APIKeyFilter.class)
                 .addFilterAfter(jwtAuthFilter, RateLimitingFilter.class)
+                // Explanation: STATELESS/IF_REQUIRED
+                // STATELESS policy
+                // IF_REQUIRED policy
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(

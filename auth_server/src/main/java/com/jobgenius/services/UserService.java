@@ -1,26 +1,26 @@
 package com.jobgenius.services;
 
-import java.util.List;
-
+import com.jobgenius.dto.FastAPICreateRequest;
+import com.jobgenius.models.User;
+import com.jobgenius.repositories.UserRepository;
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import com.jobgenius.utils.FastAPIUpdates;
 
-import com.jobgenius.dto.FastAPICreateRequest;
-import com.jobgenius.models.User;
-import com.jobgenius.repositories.UserRepository;
-
-import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
+import java.util.List;
 
 @RequiredArgsConstructor
 @Service
 public class UserService {
     private final WebClient webClient;
     private final UserRepository userRepository;
+    private final FastAPIUpdates fastAPIUpdates;
     private final Logger logger = LoggerFactory.getLogger(UserService.class);
 
     public List<User> getAllUsers() {
@@ -75,6 +75,15 @@ public class UserService {
                 logger.error("Failed syncing user {}: {}",
                         user.getEmail(), e.getMessage());
             }
+        }
+    }
+
+    @Scheduled(fixedRate = 60000)
+    public void fastAPISyncPlan() {
+        List<Long> uids = userRepository.findAllUserIdsHavingExpiredPlan();
+
+        for (Long uid: uids) {
+            fastAPIUpdates.updatePlanFastAPI(uid.toString(), "FREE", "");
         }
     }
 }

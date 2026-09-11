@@ -14,6 +14,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Entity
 @Table(name = "users", indexes = {
+        @Index(name = "idx_uid", columnList = "uid"),
+        @Index(name = "idx_name", columnList = "name"),
         @Index(name = "idx_email", columnList = "email")
 })
 public class User {
@@ -96,4 +98,5 @@ public class User {
     public void setFastAPISync(boolean isFastAPISync) {
         this.fastAPISync = isFastAPISync;
     }
+
 }
