@@ -2,7 +2,7 @@ Tuong Nguyen Pham
 Updates in Sep 3rd, 2026
 
 Upcoming implementations:
-- frontend
+- frontend (remember to implement refresh access token)
 - create index for the SQL
 
 Next version of the API_SERVER:
