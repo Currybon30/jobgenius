@@ -1,8 +1,7 @@
 import logging
 
-from fastapi import HTTPException, Request, status
-
 from app.auth.jwt_handler import decode_jwt
+from fastapi import HTTPException, Request, status
 
 logger = logging.getLogger(__name__)
 

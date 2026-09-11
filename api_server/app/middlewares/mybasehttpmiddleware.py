@@ -1,14 +1,13 @@
 import logging
 import time
 
+from app.auth.jwt_handler import decode_jwt
+from app.db.redis import get_redis_client
+from app.helpers.limit_helper import MONTH_LIMIT, MONTH_WINDOW, RATE_LIMIT, RATE_WINDOW
 from fastapi import FastAPI, Response, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-
-from app.auth.jwt_handler import decode_jwt
-from app.db.redis import get_redis_client
-from app.middlewares.limit import MONTH_LIMIT, MONTH_WINDOW, RATE_LIMIT, RATE_WINDOW
 
 logger = logging.getLogger(__name__)
 
@@ -90,17 +89,20 @@ class MyBaseHTTPMiddleware(BaseHTTPMiddleware):
             logger.info("[STATUS CODE] Response: %s", response.status_code)
             return response
         except RuntimeError as e:
-            if (
-                "No response returned." in str(e)
-                and await request.is_disconnected()
-            ):
+            if "No response returned." in str(e) and await request.is_disconnected():
                 logger.error("Request disconnected: %s", request.url)
                 logger.info("[STATUS CODE] Response: %s", status.HTTP_204_NO_CONTENT)
                 return Response(status_code=status.HTTP_204_NO_CONTENT)
             raise
         except Exception as e:
             logger.error("Error: %s", e)
-            logger.info("[STATUS CODE] Response: %s", status.HTTP_500_INTERNAL_SERVER_ERROR)
-            return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+            logger.info(
+                "[STATUS CODE] Response: %s", status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+            return JSONResponse(
+                status_code=500, content={"detail": "Internal server error"}
+            )
         finally:
-            logger.info("[END] Request processing time: %s seconds", time.time() - start)
+            logger.info(
+                "[END] Request processing time: %s seconds", time.time() - start
+            )

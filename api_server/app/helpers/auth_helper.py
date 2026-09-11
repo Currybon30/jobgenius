@@ -1,10 +1,12 @@
+from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, status
-
 from app.core.config import settings
-from app.schemas.user import PlanEnum, UserResponse
-from app.services.user_service import get_current_user
+from app.db.session import get_db
+from app.schemas.user import PlanEnum, UserPlanUpdate, UserResponse
+from app.services.user_service import get_current_user, update_user_plan
+from fastapi import Depends, Header, HTTPException, status
+from sqlalchemy.orm import Session
 
 
 def is_owner(
@@ -23,5 +25,9 @@ def verify_api_key(x_api_key: str = Header(...)):
         raise HTTPException(status_code=401, detail="Invalid API Key")
 
 
-def is_premium_user(current_user: Annotated[UserResponse, Depends(get_current_user)]):
-    return current_user and current_user.plan == PlanEnum.PREMIUM
+def is_premium_user(
+    current_user: Annotated[UserResponse | None, Depends(get_current_user)],
+):
+    if not current_user:
+        return False
+    return current_user.plan == PlanEnum.PREMIUM

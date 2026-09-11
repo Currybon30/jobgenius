@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 @router.get("/api/users/me", response_model=UserResponse)
 def get_current_user_info(
-    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    current_user: Annotated[UserResponse | None, Depends(get_current_user)],
 ):
     if not current_user:
         raise HTTPException(
@@ -34,7 +34,7 @@ def get_current_user_info(
 @router.get("/api/users/{user_id}", response_model=UserResponse)
 def get_user_info(
     user_id: int,
-    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    current_user: Annotated[UserResponse | None, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
     if not current_user:
