@@ -1,14 +1,13 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Annotated
-
-from fastapi import Depends, HTTPException
-from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user_id
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.user import PlanEnum, UserPlanUpdate, UserResponse
+from fastapi import Depends, HTTPException
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +35,22 @@ def get_current_user(
     if not user:
         logger.warning(f"User with ID {user_id} not found")
         return None
-    return UserResponse(uid=user.uid, plan=PlanEnum(user.plan.upper() if user.plan else "FREE"), plan_expiry=user.plan_expiry)
+    now = datetime.now(timezone.utc)
+    if user.plan == PlanEnum.PREMIUM and user.plan_expiry is not None:
+        expiry = user.plan_expiry
+        if expiry.tzinfo is None:
+            expiry = expiry.replace(tzinfo=timezone.utc)
+        if expiry < now:
+            user = update_user_plan(
+                user.uid,
+                UserPlanUpdate(new_plan=PlanEnum.FREE, plan_expiry=None),
+                db,
+            )
+    return UserResponse(
+        uid=user.uid,
+        plan=PlanEnum(user.plan.upper() if user.plan else "FREE"),
+        plan_expiry=user.plan_expiry,
+    )
 
 
 def update_user_plan(user_id: int, data: UserPlanUpdate, db: Session):
@@ -54,9 +68,8 @@ def update_user_plan(user_id: int, data: UserPlanUpdate, db: Session):
     elif isinstance(expiry, str):
         expiry = datetime.fromisoformat(expiry)
 
-    logger.info(
-        f"Updating user {user_id} plan to {data.new_plan} with expiry {expiry}")
-    user.plan = data.new_plan
+    logger.info(f"Updating user {user_id} plan to {data.new_plan} with expiry {expiry}")
+    user.plan = PlanEnum(data.new_plan).value
     user.plan_expiry = expiry
     try:
         db.commit()
