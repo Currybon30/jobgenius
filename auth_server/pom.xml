@@ -48,7 +48,7 @@
 		<dependency>
 			<groupId>com.stripe</groupId>
 			<artifactId>stripe-java</artifactId>
-			<version>24.0.0</version>
+			<version>33.4.2</version>
 		</dependency>
 
 		<!-- Web (REST API) -->
