@@ -3,16 +3,13 @@ import json
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.responses import JSONResponse
-
 from app.ai_agents.agents.agent7_jobfinder import jobfinder_agent
 from app.auth.dependencies import get_current_user_id
-from app.db.redis import cache_get, cache_set
+from app.db.redis import cache_get, cache_set, get_redis_client
 from app.helpers.auth_helper import is_premium_user
 from app.helpers.job_indexing import schedule_job_indexing
 from app.helpers.llm_call import agent7_jobfinder_format_result
-from app.helpers.user_helper import get_user_city_and_country
+from app.helpers.user_helper import get_user_city_and_country, get_user_ip_address
 from app.schemas.user import UserResponse
 from app.services.job_service import job_recommendation_with_pinecone, search_jobs
 from app.services.resume_service import (
@@ -20,6 +17,8 @@ from app.services.resume_service import (
     resolve_resume_id_for_recommendations,
 )
 from app.services.user_service import get_current_user
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 
@@ -54,11 +53,13 @@ async def get_job_recommendations_unlogged_in_user(request: Request):
                 detail="Anonymous UUID not found",
             )
         anonymous_uuid = str(anonymous_uuid)
-        ip = request.headers.get("x-forwarded-for") or (
-            request.client.host if request.client else None
-        )
-        ip_address = ip.split(",")[0].strip() if ip else None
-        city, country, country_code = await get_user_city_and_country(ip_address)
+        ip = get_user_ip_address(request)
+        if not ip:
+            raise HTTPException(
+                status_code=status.HTTP_407_PROXY_AUTHENTICATION_REQUIRED,
+                detail="Proxy authentication required. Please configure your proxy to include the client-ip-address header.",
+            )
+        city, country, country_code = await get_user_city_and_country(ip)
         if not city or not country or not country_code:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -116,8 +117,9 @@ async def get_job_recommendations_unlogged_in_user(request: Request):
 @router.get("/recommendations/free")
 async def get_job_recommendations_free_user(
     request: Request,
-    current_user: Annotated[UserResponse, Depends(get_current_user)],
-    industry: Annotated[str, Query()] = "any job",
+    current_user: Annotated[UserResponse | None, Depends(get_current_user)],
+    target_role: Annotated[str, Query()] = "any job",
+    seniority_level: Annotated[str, Query()] = "any level"
 ):
     """
     Get job recommendations for a free user.
@@ -125,10 +127,10 @@ async def get_job_recommendations_free_user(
     - If the user has not run the analysis, the industry parameter is any job by default.
     - If the user has run the analysis, the industry parameter is the industry of the resume.
     - Returned jobs from job search API will be stored in Redis cache for 10 days.
-    Args:
+    Required Args:
         request: Request object
-        industry: Industry to search for
-        current_user: Current user object
+        target_role: Target role to search for
+        seniority_level: Seniority level to search for
     Returns:
         JSONResponse: JSON response containing job recommendations
     """
@@ -137,19 +139,34 @@ async def get_job_recommendations_free_user(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"
         )
     try:
-        ip = request.headers.get("x-forwarded-for") or (
-            request.client.host if request.client else None
-        )
-        ip_address = ip.split(",")[0].strip() if ip else None
-        city, country, country_code = await get_user_city_and_country(ip_address)
+        ip = get_user_ip_address(request)
+        if not ip:
+            raise HTTPException(
+                status_code=status.HTTP_407_PROXY_AUTHENTICATION_REQUIRED,
+                detail="Proxy authentication required. Please configure your proxy to include the client-ip-address header.",
+            )
+        city, country, country_code = await get_user_city_and_country(ip)
         if not city or not country or not country_code:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Failed to get user's city and country",
             )
+        redis_client = get_redis_client()
+        if target_role == "any job" and seniority_level == "any level":
+            saved_target_role = await redis_client.get(f"target_role:{current_user.uid}")
+            saved_seniority_level = await redis_client.get(f"seniority_level:{current_user.uid}")
+            if saved_target_role:
+                target_role = saved_target_role.decode("utf-8")
+            if saved_seniority_level:
+                seniority_level = saved_seniority_level.decode("utf-8")
+        else:
+            target_role_key = f"target_role:{current_user.uid}"
+            seniority_level_key = f"seniority_level:{current_user.uid}"
+            await redis_client.set(target_role_key, target_role, ex=FREE_RECOMMENDATIONS_CACHE_TTL)
+            await redis_client.set(seniority_level_key, seniority_level, ex=FREE_RECOMMENDATIONS_CACHE_TTL)
 
-        normalized_industry = industry.lower().strip()
-        cache_input = f"{current_user.uid}_{normalized_industry}_{city}_{country_code}".lower().strip()
+
+        cache_input = f"{current_user.uid}_{target_role}_{seniority_level}_{city}_{country_code}".lower().strip()
         cache_hash = hashlib.sha256(cache_input.encode()).hexdigest()[:16]
         recommendations_cache_key = f"recommendations_cache:free:{cache_hash}"
         recommendations = await cache_get(recommendations_cache_key)
@@ -162,7 +179,7 @@ async def get_job_recommendations_free_user(
                 },
             )
 
-        query = f"{industry.strip()} in {city}, {country}"
+        query = f"{seniority_level.strip()} {target_role.strip()} in {city}, {country}"
         jobs = await search_jobs(query, country=country_code, language="en")
         if not jobs:
             raise HTTPException(
@@ -219,11 +236,13 @@ async def get_job_recommendations_premium_user(
         resolved_resume_id = await resolve_resume_id_for_recommendations(
             current_user_id, resume_id
         )
-        ip = request.headers.get("x-forwarded-for") or (
-            request.client.host if request.client else None
-        )
-        ip_address = ip.split(",")[0].strip() if ip else None
-        city, country, country_code = await get_user_city_and_country(ip_address)
+        ip = get_user_ip_address(request)
+        if not ip:
+            raise HTTPException(
+                status_code=status.HTTP_407_PROXY_AUTHENTICATION_REQUIRED,
+                detail="Proxy authentication required. Please configure your proxy to include the client-ip-address header.",
+            )
+        city, country, country_code = await get_user_city_and_country(ip)
 
         cache_input = f"{current_user_id}_{resolved_resume_id}_{city}_{country_code}".lower().strip()
         cache_hash = hashlib.sha256(cache_input.encode()).hexdigest()[:16]

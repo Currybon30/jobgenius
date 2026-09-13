@@ -1,6 +1,24 @@
 import logging
 from typing import Annotated
 
+from app.ai_agents.free_tier_multiagents import GraphState as FreeTierGraphState
+from app.ai_agents.free_tier_multiagents import build_free_tier_graph
+from app.ai_agents.premium_multiagents import GraphState as PremiumGraphState
+from app.ai_agents.premium_multiagents import build_premium_graph
+from app.auth.dependencies import get_current_user_id
+from app.db.arq import get_arq_pool
+from app.db.redis import get_redis_client
+from app.helpers.auth_helper import is_premium_user
+from app.helpers.limit_helper import increment_monthly_usage
+from app.schemas.user import UserResponse
+from app.services.resume_analyzer import convert_file_to_bytes, extract_text_from_resume
+from app.services.resume_service import (
+    delete_resume_by_id_and_version,
+    get_resume_by_id_and_version_from_mongodb,
+    get_resume_by_id_from_mongodb,
+    get_resumes_from_mongodb,
+)
+from app.services.user_service import get_current_user
 from fastapi import (
     APIRouter,
     Cookie,
@@ -14,26 +32,15 @@ from fastapi import (
 )
 from fastapi.responses import JSONResponse
 
-from app.ai_agents.free_tier_multiagents import GraphState as FreeTierGraphState
-from app.ai_agents.free_tier_multiagents import build_free_tier_graph
-from app.ai_agents.premium_multiagents import GraphState as PremiumGraphState
-from app.ai_agents.premium_multiagents import build_premium_graph
-from app.auth.dependencies import get_current_user_id
-from app.db.arq import get_arq_pool
-from app.db.redis import get_redis_client
-from app.helpers.auth_helper import is_premium_user
-from app.helpers.limit_helper import increment_monthly_usage
-from app.services.resume_analyzer import convert_file_to_bytes, extract_text_from_resume
-from app.services.resume_service import (
-    delete_resume_by_id_and_version,
-    get_resume_by_id_and_version_from_mongodb,
-    get_resume_by_id_from_mongodb,
-    get_resumes_from_mongodb,
-)
-
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["resumes"])
+
+ANALYZER_LIMIT = 3
+JOB_FINDER_LIMIT = 1
+FREE_ANALYZER_RESET_WINDOW = 60 * 60 * 24 * 7  # 7 days
+PREMIUM_ANALYZER_RESET_WINDOW = 60 * 60 * 24 * 1  # 1 day
+JOB_FINDER_RESET_WINDOW = 60 * 60 * 24 * 3  # 3 days
 
 
 @router.post("/api/resume/analyze")
@@ -42,8 +49,18 @@ async def analyze_resume_free_tier(
     jd_text: Annotated[str, Form()] = "",  # optional
     user_goal: Annotated[str, Form()] = "",  # optional
     anonymous_uuid: Annotated[str | None, Cookie()] = None,
+    current_user: Annotated[UserResponse | None, Depends(get_current_user)] = None,
 ):
     try:
+        if current_user:
+            redis_client = get_redis_client()
+            usage_key = f"free_resume_analyzer_usage:{current_user.uid}"
+            usage = await redis_client.get(usage_key)
+            if usage and int(usage) > ANALYZER_LIMIT:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"You have reached the maximum number of resume analyses for today. Please try again in {FREE_ANALYZER_RESET_WINDOW} days.",
+                )
         resume_bytes = await convert_file_to_bytes(resume_pdf)
         resume_text = extract_text_from_resume(resume_pdf, resume_bytes)
         free_tier_analyzer = await build_free_tier_graph()
@@ -65,6 +82,10 @@ async def analyze_resume_free_tier(
         }
         if anonymous_uuid:
             await increment_monthly_usage(anonymous_uuid)
+        if current_user:
+            count = await redis_client.incr(usage_key)
+            if count == 1:
+                await redis_client.expire(usage_key, FREE_ANALYZER_RESET_WINDOW)
         return JSONResponse(content=content, status_code=status.HTTP_200_OK)
     except HTTPException:
         raise
@@ -85,7 +106,7 @@ async def analyze_resume_premium(
     user_goal: Annotated[str, Form()] = "",  # optional
     includes_job_finder: Annotated[bool, Form()] = False,  # optional
     is_premium_user: Annotated[bool, Depends(is_premium_user)] = False,
-    current_user_id: Annotated[int, Depends(get_current_user_id)] = -1,
+    current_user: Annotated[UserResponse | None, Depends(get_current_user)] = None,
 ):
     """
     Analyze the resume for premium users
@@ -110,27 +131,23 @@ async def analyze_resume_premium(
         )
     try:
         redis_client = get_redis_client()
-        usage_key = f"premium_resume_analyzer_usage:{current_user_id}"
+        usage_key = f"premium_resume_analyzer_usage:{current_user.uid}"
         usage = await redis_client.get(usage_key)
-        if not usage:
-            await redis_client.set(usage_key, 0)
-        elif int(usage) >= 3:
+        if usage and int(usage) > ANALYZER_LIMIT:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You have reached the maximum number of resume analyses for today. Please try again tomorrow.",
+                detail=f"You have reached the maximum number of resume analyses for today. Please try again in {PREMIUM_ANALYZER_RESET_WINDOW} days.",
             )
         arq_pool = get_arq_pool()
         message = ""
         job_finder_usage_key = ""
         if includes_job_finder:
             job_finder_usage_key = (
-                f"job_search_with_prompt_premium_limit:{current_user_id}"
+                f"job_search_with_prompt_premium_limit:{current_user.uid}"
             )
             job_finder_usage = await redis_client.get(job_finder_usage_key)
-            if not job_finder_usage or int(job_finder_usage) < 1:
-                await redis_client.set(job_finder_usage_key, 0)
-            elif job_finder_usage and int(job_finder_usage) >= 1:
-                message = "You have reached the maximum number of job finder calls for 3 days. We will disable the job finder feature for you in this session. Please try again in 3 days."
+            if job_finder_usage and int(job_finder_usage) > JOB_FINDER_LIMIT:
+                message = f"You have reached the maximum number of job finder calls for {JOB_FINDER_RESET_WINDOW} days. We will disable the job finder feature for you in this session. Please try again in {JOB_FINDER_RESET_WINDOW} days."
                 includes_job_finder = False
 
         resume_bytes = await convert_file_to_bytes(resume_pdf)
@@ -162,18 +179,20 @@ async def analyze_resume_premium(
 
         await arq_pool.enqueue_job(
             "store_resume_to_mongodb_arq",
-            current_user_id,
+            current_user.uid,
             resume_pdf.filename,
             resume_bytes,
             result,
         )
-        await redis_client.incr(usage_key)
-        await redis_client.expire(usage_key, 60 * 60 * 24)
+        count = await redis_client.incr(usage_key)
+        if count == 1:
+            await redis_client.expire(usage_key, PREMIUM_ANALYZER_RESET_WINDOW)
         job_finder = content.get("job_finder") or {}
         job_finder_jobs = job_finder.get("jobs") or []
         if includes_job_finder and job_finder and len(job_finder_jobs) > 0:
-            await redis_client.incr(job_finder_usage_key)
-            await redis_client.expire(job_finder_usage_key, 60 * 60 * 24 * 3)
+            count = await redis_client.incr(job_finder_usage_key)
+            if count == 1:
+                await redis_client.expire(job_finder_usage_key, JOB_FINDER_RESET_WINDOW)
         return JSONResponse(content=content, status_code=status.HTTP_200_OK)
     except HTTPException:
         raise
@@ -238,9 +257,7 @@ async def delete_resume(
     version: Annotated[int, Query()],
 ):
     try:
-        await delete_resume_by_id_and_version(
-            current_user_id, resume_id, version
-        )
+        await delete_resume_by_id_and_version(current_user_id, resume_id, version)
         return JSONResponse(
             content={"message": "Resume deleted successfully."},
             status_code=status.HTTP_200_OK,
