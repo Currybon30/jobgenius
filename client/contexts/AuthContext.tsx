@@ -10,15 +10,20 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { getCurrentUser } from "@/services/userServices";
+import { handleRefreshToken } from "@/auth/api";
+import { getCurrentUser } from "@/services/userService";
+import { getUserPlan } from "@/services/userService";
 
 export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
 const AUTH_STATUS_STORAGE_KEY = "jobgenius_auth_status";
+/** Access JWT TTL is 15 minutes — refresh slightly early to avoid expiry races. */
+const ACCESS_TOKEN_REFRESH_MS = 14 * 60 * 1000;
 
 export type AuthContextValue = {
   status: AuthStatus;
-  refreshAuth: () => Promise<void>; 
+  tier: string | null;
+  refreshAuth: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -64,8 +69,10 @@ async function resolveAuthStatus(): Promise<AuthStatus> {
 export function AuthProvider({ children }: { children: ReactNode }) {
   // Always "loading" on first render so SSR and client markup match (no sessionStorage in useState).
   const [status, setStatus] = useState<AuthStatus>("loading"); // status: "loading" | "authenticated" | "unauthenticated"
+  const [tier, setTier] = useState<string | null>(null);
   const initialFetchDoneRef = useRef(false);
   const fetchInFlightRef = useRef<Promise<AuthStatus> | null>(null);
+  const tokenRefreshInFlightRef = useRef<Promise<void> | null>(null);
 
   const refreshAuth = useCallback(async () => {
     if (fetchInFlightRef.current) {
@@ -77,6 +84,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const next = await resolveAuthStatus();
       setStatus(next);
       persistStatus(next);
+      if (next === "authenticated") {
+        const nextTier = await getUserPlan();
+        setTier(nextTier);
+      } else {
+        setTier(null);
+      }
       return next;
     })();
 
@@ -85,6 +98,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await run;
     } finally {
       fetchInFlightRef.current = null;
+    }
+  }, []);
+
+  const refreshAccessToken = useCallback(async () => {
+    if (tokenRefreshInFlightRef.current) {
+      await tokenRefreshInFlightRef.current;
+      return;
+    }
+
+    const run = (async () => {
+      try {
+        await handleRefreshToken();
+      } catch {
+        clearStoredStatus();
+        setStatus("unauthenticated");
+        setTier(null);
+      }
+    })();
+
+    tokenRefreshInFlightRef.current = run;
+    try {
+      await run;
+    } finally {
+      tokenRefreshInFlightRef.current = null;
     }
   }, []);
 
@@ -103,12 +140,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const next = await resolveAuthStatus();
       setStatus(next);
       persistStatus(next);
+      if (next === "authenticated") {
+        const nextTier = await getUserPlan();
+        setTier(nextTier);
+      } else {
+        setTier(null);
+      }
     })();
   }, [refreshAuth]);
 
+  // Keep access token fresh while the user stays authenticated.
+  useEffect(() => {
+    if (status !== "authenticated") return;
+
+    const intervalId = window.setInterval(() => {
+      void refreshAccessToken();
+    }, ACCESS_TOKEN_REFRESH_MS);
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        void refreshAccessToken();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [status, refreshAccessToken]);
+
   const value = useMemo<AuthContextValue>(
-    () => ({ status, refreshAuth }),
-    [status, refreshAuth],
+    () => ({ status, tier, refreshAuth }),
+    [status, tier, refreshAuth],
   );
 
   return (

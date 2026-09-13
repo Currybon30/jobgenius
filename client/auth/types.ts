@@ -12,4 +12,6 @@ export type RegisterRequest = {
 export type AuthOptions = {
     signal?: AbortSignal;
     withCredentials?: boolean;
+    timeout?: number;
+    headers?: Record<string, string>;
 };

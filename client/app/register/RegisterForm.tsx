@@ -44,11 +44,6 @@ export function RegisterForm() {
 
     const controller = new AbortController();
     controllerRef.current = controller;
-
-    controller.signal.addEventListener("abort", () => {
-      toast.error("Registration failed: Request was aborted by user");
-    });
-
     try {
       let name = AdjustUserFullName(firstname, lastname, country);
 
@@ -57,7 +52,8 @@ export function RegisterForm() {
         email,
         password,
       };
-      await handleRegister(registerRequest, { signal: controller.signal, withCredentials: true });
+      await handleRegister(registerRequest, { signal: controller.signal });
+      if (controllerRef.current !== controller) return;
       router.replace("/login");
       toast.success("Registration successful");
     } catch (error: unknown) {
@@ -74,6 +70,10 @@ export function RegisterForm() {
         toast.error("Login failed: " + error.message);
       } else {
         toast.error("Login failed");
+      }
+    } finally {
+      if (controllerRef.current === controller) {
+        controllerRef.current = null;
       }
     }
   };

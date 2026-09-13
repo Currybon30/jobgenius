@@ -41,7 +41,7 @@ export function LoginForm() {
         password,
       };
 
-      await handleLogin(loginRequest, { signal: controller.signal, withCredentials: true });
+      await handleLogin(loginRequest, { signal: controller.signal });
 
       if (controllerRef.current !== controller) return;
 

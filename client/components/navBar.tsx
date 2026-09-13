@@ -2,26 +2,27 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { handleLogout } from "@/auth/api";
 import { clearAuthSession, useAuth } from "@/contexts/AuthContext";
-import { getUserPlan } from "@/services/userServices";
 import "./navBar.css";
 import { toast } from "react-toastify";
 
 const NAV_LINKS = [
   { label: "Home", href: "/" },
-  { label: "Resume Analyzer", href: "/analyzer" },
-  { label: "Jobs", href: "/jobs" },
+  { label: "R-Analyzer", href: "/analyzer" },
+  { label: "J-Recommender", href: "/jrecommender" },
+  { label: "Plans", href: "/plans" },
   { label: "About", href: "/about" },
   { label: "FAQs", href: "/faqs" },
   { label: "Contact", href: "/contact" },
 ] as const;
 
 const PROFILE_LINKS = [
-  { label: "My Account", href: "/my-account" },
-  { label: "Settings", href: "/settings" },
-  { label: "Help", href: "/faqs" },
+  { label: "My Account", href: "/my_account" },
+  { label: "Settings & Privacy", href: "/settings_privacy" },
+  { label: "Usage & Billing", href: "/usage_billing" },
+  { label: "Help", href: "/help" }
 ] as const;
 
 function ProfileIcon() {
@@ -76,33 +77,11 @@ function AuthActionSkeleton() {
 export function NavBar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { status, refreshAuth } = useAuth();
-  const [userPlanState, setUserPlanState] = useState("");
+  const { status, tier, refreshAuth } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const planFetchedRef = useRef(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
-
-  const checkUserPlan = useCallback(async () => {
-    try {
-      setUserPlanState(await getUserPlan());
-    } catch {
-      setUserPlanState("FREE");
-    }
-  }, []);
-
-  useEffect(() => {
-    if (status !== "authenticated") {
-      setUserPlanState("");
-      planFetchedRef.current = false;
-      return;
-    }
-    if (planFetchedRef.current) return;
-
-    planFetchedRef.current = true;
-    void checkUserPlan();
-  }, [status, checkUserPlan]);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -149,8 +128,6 @@ export function NavBar() {
     } catch {
       /* still clear local session state */
     } finally {
-      setUserPlanState("");
-      planFetchedRef.current = false;
       clearAuthSession();
       await refreshAuth();
       router.push("/");
@@ -166,16 +143,16 @@ export function NavBar() {
   const renderPlanBanner = () => {
     if (status !== "authenticated") return null;
 
-    return userPlanState === "FREE" ? (
+    return tier?.toLowerCase() === "free" ? (
       <button
         type="button"
         className="plan-banner is-free"
-        // onClick={() => router.push("/upgrade")}
+        onClick={() => router.push("/plans")}
       >
         Upgrade ★
       </button>
     ) : (
-      <p className="plan-banner is-premium">{userPlanState}</p>
+      <p className="plan-banner is-premium">{tier}</p>
     );
   };
 

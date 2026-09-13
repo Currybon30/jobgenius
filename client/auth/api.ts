@@ -1,16 +1,18 @@
 import axios from "axios";
 import { AuthOptions, LoginRequest, RegisterRequest } from "./types";
 
-const authConfig = (options?: AuthOptions) => ({
+export const authConfig = (options?: AuthOptions) => ({
     signal: options?.signal,
     withCredentials: options?.withCredentials ?? true,
+    timeout: options?.timeout ?? 4000,
+    headers: options?.headers ?? {},
 });
 
 export async function handleAnonymousReady(): Promise<void> {
     try {
         await axios.get(
             `${process.env.NEXT_PUBLIC_SPRING_API_URL}/anonymous_ready`,
-            { withCredentials: true },
+            authConfig(),
         );
     }
     catch (error: unknown) {
@@ -88,7 +90,7 @@ export async function handleRefreshToken(): Promise<void> {
         await axios.post(
             `${process.env.NEXT_PUBLIC_SPRING_API_URL}/auth/refresh`,
             {},
-            { withCredentials: true },
+            authConfig(),
         )
     }
     catch (error: unknown) {
@@ -110,6 +112,6 @@ export async function handleLogout(): Promise<void> {
     await axios.post(
         `${process.env.NEXT_PUBLIC_SPRING_API_URL}/auth/logout`,
         {},
-        { withCredentials: true },
+        authConfig(),
     );
 }
