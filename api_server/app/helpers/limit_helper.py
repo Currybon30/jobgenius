@@ -1,8 +1,5 @@
 import logging
 
-from fastapi import HTTPException, status
-from fastapi.responses import JSONResponse
-
 from app.db.redis import get_redis_client
 
 logger = logging.getLogger(__name__)
@@ -10,7 +7,7 @@ logger = logging.getLogger(__name__)
 RATE_LIMIT = 5  # Max requests per minute
 RATE_WINDOW = 60  # 1 minute in seconds
 
-MONTH_LIMIT = 5
+MONTH_LIMIT = 2
 MONTH_WINDOW = 30 * 24 * 60 * 60  # 30 days in seconds
 
 
