@@ -1,6 +1,7 @@
 import logging
 import time
 
+from api_server.app.helpers.user_helper import get_user_ip_address
 from app.auth.jwt_handler import decode_jwt
 from app.db.redis import get_redis_client
 from app.helpers.limit_helper import MONTH_LIMIT, MONTH_WINDOW, RATE_LIMIT, RATE_WINDOW
@@ -30,19 +31,18 @@ class MyBaseHTTPMiddleware(BaseHTTPMiddleware):
             redis_client = get_redis_client()
             access_token = request.cookies.get("access_token")
             if access_token:
-                try:
-                    payload = decode_jwt(access_token)
-                    if payload.get("user_id") is not None:
-                        response = await call_next(request)
-                        logger.info("[STATUS CODE] Response: %s", response.status_code)
-                        return response
-                except Exception:
-                    pass
+                payload = decode_jwt(access_token)
+                if payload.get("user_id") is not None:
+                    response = await call_next(request)
+                    logger.info("[STATUS CODE] Response: %s", response.status_code)
+                    return response
 
-            ip = request.headers.get("x-forwarded-for") or (
-                request.client.host if request.client else ""
-            )
-            ip = ip.split(",")[0].strip()
+            ip = get_user_ip_address(request)
+            if not ip:
+                return JSONResponse(
+                    status_code=status.HTTP_407_PROXY_AUTHENTICATION_REQUIRED,
+                    content={"detail": "Proxy authentication required. Please configure your proxy to include the client-ip-address header."},
+                )
             anonymous_uuid = request.cookies.get("anonymous_uuid")
             if not anonymous_uuid:
                 logger.info("[STATUS CODE] Response: %s", 400)
@@ -82,7 +82,7 @@ class MyBaseHTTPMiddleware(BaseHTTPMiddleware):
                 return JSONResponse(
                     status_code=429,
                     content={
-                        "detail": "Monthly limit exceeded. Please try again later."
+                        "detail": "Monthly limit for unlogged-in users exceeded. Please login to continue."
                     },
                 )
             response = await call_next(request)

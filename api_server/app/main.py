@@ -2,9 +2,6 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-
 from app.core.config import settings
 from app.core.logging_config import setup_logging
 from app.db.arq import close_arq_pool, init_arq_pool
@@ -16,10 +13,14 @@ from app.db.redis import close_redis, init_redis
 from app.db.s3 import close_s3_client, init_s3_client
 from app.db.session import engine
 from app.middlewares.mybasehttpmiddleware import MyBaseHTTPMiddleware
-from app.routes.job_recommender_router import router as job_recommender_router
-from app.routes.job_search_with_prompt import router as job_search_with_prompt_router
-from app.routes.resume_router import router as resume_router
-from app.routes.user_router import router as user_router
+from app.routers.job_recommender_router import router as job_recommender_router
+from app.routers.job_search_with_prompt_router import (
+    router as job_search_with_prompt_router,
+)
+from app.routers.resume_router import router as resume_router
+from app.routers.user_router import router as user_router
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 setup_logging()
 logger = logging.getLogger(__name__)
