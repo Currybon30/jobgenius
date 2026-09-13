@@ -1,17 +1,16 @@
 Tuong Nguyen Pham
-Updates in Sep 3rd, 2026
+Updates in Sep 12, 2026
 
 Upcoming implementations:
-- frontend (remember to implement refresh access token)
+- frontend
 - create index for the SQL
 
 Next version of the API_SERVER:
 - Handle the case where job finder returns no jobs, but the message has a message with some jobs to users.
-- Scale and harden the job-based architecture. 
-
+- Scale and harden the job-based architecture.
 
 Next version of the AUTH_SERVER:
-- Implement logging to track the usage of the API.
+- Implement logging to track the usage logs of the API.
 - Since Spring Boot supports scheduling tasks, we will use it to delete the resumes and jobs from MongoDB and S3 after a certain period of time.
 - Implement login with Facebook.
 
