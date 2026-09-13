@@ -162,10 +162,6 @@ async def get_resumes_from_mongodb(user_id: int):
                 }
             )
         return resumes
-    except HTTPException:
-        raise
-    except ValueError:
-        raise
     except Exception as e:
         logger.error(f"Error getting resume from MongoDB: {e}")
         raise HTTPException(
@@ -197,8 +193,6 @@ async def get_resume_by_id_and_version_from_mongodb(
             "storage_path": response["storage_path"],
             "analysis": analysis.model_dump(mode="json"),
         }
-    except HTTPException:
-        raise
     except ValueError:
         raise
     except Exception as e:
@@ -231,10 +225,6 @@ async def get_resume_by_id_from_mongodb(user_id: int, resume_id: str):
                 detail=f"Resume {resume_id} of user {user_id} not found. Please run premium analysis first.",
             )
         return resumes
-    except HTTPException:
-        raise
-    except ValueError:
-        raise
     except Exception as e:
         logger.error(f"Error getting resumes by id from MongoDB: {e}")
         raise HTTPException(
@@ -253,8 +243,6 @@ async def get_resume_for_job_recommendation_from_mongodb(user_id: int, resume_id
         return await resume_for_job_recommendation_collection.find_one(
             {"user_id": user_id, "resume_id": resume_id}
         )
-    except ValueError:
-        raise
     except Exception as e:
         logger.error(f"Error getting resume for job recommendation from MongoDB: {e}")
         raise HTTPException(
@@ -314,8 +302,6 @@ async def delete_resume_by_id_and_version(user_id: int, resume_id: str, version:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Key (storage_path) for resume {resume_id} version {version} of user {user_id} not found.",
             )
-    except HTTPException:
-        raise
     except ValueError:
         raise
     except Exception as e:
