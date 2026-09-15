@@ -46,13 +46,6 @@ async def _cache_and_return_premium_recommendations(
 @router.get("/recommendations")
 async def get_job_recommendations_unlogged_in_user(request: Request):
     try:
-        anonymous_uuid = request.cookies.get("anonymous_uuid")
-        if not anonymous_uuid:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Anonymous UUID not found",
-            )
-        anonymous_uuid = str(anonymous_uuid)
         ip = get_user_ip_address(request)
         if not ip:
             raise HTTPException(
@@ -66,7 +59,7 @@ async def get_job_recommendations_unlogged_in_user(request: Request):
                 detail="Failed to get user's city and country",
             )
 
-        cache_input = f"{anonymous_uuid}_{city}_{country_code}".lower().strip()
+        cache_input = f"{city}_{country_code}".lower().strip()
         cache_hash = hashlib.sha256(cache_input.encode()).hexdigest()[:16]
         recommendations_cache_key = f"recommendations_cache:{cache_hash}"
         recommendations = await cache_get(recommendations_cache_key)
@@ -119,7 +112,7 @@ async def get_job_recommendations_free_user(
     request: Request,
     current_user: Annotated[UserResponse | None, Depends(get_current_user)],
     target_role: Annotated[str, Query()] = "any job",
-    seniority_level: Annotated[str, Query()] = "any level"
+    seniority_level: Annotated[str, Query()] = ""
 ):
     """
     Get job recommendations for a free user.
@@ -152,13 +145,13 @@ async def get_job_recommendations_free_user(
                 detail="Failed to get user's city and country",
             )
         redis_client = get_redis_client()
-        if target_role == "any job" and seniority_level == "any level":
+        if target_role == "any job" and seniority_level == "":
             saved_target_role = await redis_client.get(f"target_role:{current_user.uid}")
             saved_seniority_level = await redis_client.get(f"seniority_level:{current_user.uid}")
             if saved_target_role:
-                target_role = saved_target_role.decode("utf-8")
+                target_role = saved_target_role
             if saved_seniority_level:
-                seniority_level = saved_seniority_level.decode("utf-8")
+                seniority_level = saved_seniority_level
         else:
             target_role_key = f"target_role:{current_user.uid}"
             seniority_level_key = f"seniority_level:{current_user.uid}"
@@ -166,7 +159,7 @@ async def get_job_recommendations_free_user(
             await redis_client.set(seniority_level_key, seniority_level, ex=FREE_RECOMMENDATIONS_CACHE_TTL)
 
 
-        cache_input = f"{current_user.uid}_{target_role}_{seniority_level}_{city}_{country_code}".lower().strip()
+        cache_input = f"{target_role}_{seniority_level}_{city}_{country_code}".lower().strip()
         cache_hash = hashlib.sha256(cache_input.encode()).hexdigest()[:16]
         recommendations_cache_key = f"recommendations_cache:free:{cache_hash}"
         recommendations = await cache_get(recommendations_cache_key)
@@ -178,8 +171,11 @@ async def get_job_recommendations_free_user(
                     "jobs": json.loads(recommendations),
                 },
             )
-
-        query = f"{seniority_level.strip()} {target_role.strip()} in {city}, {country}"
+        query = ""
+        if seniority_level == "":
+            query = f"{target_role.strip()} in {city}, {country}"
+        else:
+            query = f"{target_role.strip()} at {seniority_level.strip()} level in {city}, {country}"
         jobs = await search_jobs(query, country=country_code, language="en")
         if not jobs:
             raise HTTPException(
@@ -221,6 +217,8 @@ async def get_job_recommendations_premium_user(
     current_user_id: Annotated[int, Depends(get_current_user_id)],
     is_premium: Annotated[bool, Depends(is_premium_user)],
     resume_id: Annotated[str | None, Query()] = None,
+    target_role: Annotated[str, Query()] = "any job",
+    seniority_level: Annotated[str, Query()] = "",
 ):
     """
     Get job recommendations for a premium user.
@@ -232,6 +230,9 @@ async def get_job_recommendations_premium_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This action is only available to PREMIUM users.",
         )
+    city = ""
+    country = ""
+    country_code = ""
     try:
         resolved_resume_id = await resolve_resume_id_for_recommendations(
             current_user_id, resume_id
@@ -243,8 +244,13 @@ async def get_job_recommendations_premium_user(
                 detail="Proxy authentication required. Please configure your proxy to include the client-ip-address header.",
             )
         city, country, country_code = await get_user_city_and_country(ip)
+        if not city or not country or not country_code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Failed to get user's city and country",
+            )
 
-        cache_input = f"{current_user_id}_{resolved_resume_id}_{city}_{country_code}".lower().strip()
+        cache_input = f"{resolved_resume_id}_{city}_{country_code}".lower().strip()
         cache_hash = hashlib.sha256(cache_input.encode()).hexdigest()[:16]
         recommendations_cache_key = f"recommendations_cache:premium:{cache_hash}"
         cached = await cache_get(recommendations_cache_key)
@@ -318,9 +324,36 @@ async def get_job_recommendations_premium_user(
     except HTTPException:
         raise
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"No jobs found: {e!s}"
-        )
+        if "No stored resume found" in str(e):
+            # Fall back to recommendations for free user in cache if no resume is found 
+            redis_client = get_redis_client()
+            if target_role == "any job" and seniority_level == "":
+                saved_target_role = await redis_client.get(f"target_role:{current_user_id}")
+                saved_seniority_level = await redis_client.get(f"seniority_level:{current_user_id}")
+                if saved_target_role:
+                    target_role = saved_target_role
+                if saved_seniority_level:
+                    seniority_level = saved_seniority_level
+            else:
+                target_role_key = f"target_role:{current_user_id}"
+                seniority_level_key = f"seniority_level:{current_user_id}"
+                await redis_client.set(target_role_key, target_role, ex=FREE_RECOMMENDATIONS_CACHE_TTL)
+                await redis_client.set(seniority_level_key, seniority_level, ex=FREE_RECOMMENDATIONS_CACHE_TTL)
+            
+            logger.info(f"No stored resume found for user {current_user_id}. Falling back to free user recommendations.")
+            free_recommendations_cache_key = f"{target_role}_{seniority_level}_{city}_{country_code}".lower().strip()
+            cache_hash = hashlib.sha256(free_recommendations_cache_key.encode()).hexdigest()[:16]
+            free_recommendations_cache_key = f"recommendations_cache:free:{cache_hash}"
+            cached = await cache_get(free_recommendations_cache_key)
+            if cached:
+                return JSONResponse(
+                    status_code=status.HTTP_200_OK,
+                    content=json.loads(cached),
+                )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=f"No jobs found: {e!s}"
+            )
     except Exception as e:
         logger.error(f"Error getting premium job recommendations: {e}")
         raise HTTPException(

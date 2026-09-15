@@ -1,13 +1,12 @@
 import logging
 from typing import Annotated
 
+from app.helpers.auth_helper import is_premium_user
 from app.schemas.user import UserResponse
 from app.services.usage_service import get_analyzer_usage, get_job_finder_usage
 from app.services.user_service import get_current_user
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
-
-from api_server.app.helpers.auth_helper import is_premium_user
 
 logger = logging.getLogger(__name__)
 

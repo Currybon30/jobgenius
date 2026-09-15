@@ -27,6 +27,7 @@ from fastapi import (
     Form,
     HTTPException,
     Query,
+    Request,
     UploadFile,
     status,
 )
@@ -45,22 +46,19 @@ JOB_FINDER_RESET_WINDOW = 60 * 60 * 24 * 3  # 3 days
 
 @router.post("/api/resume/analyze")
 async def analyze_resume_free_tier(
+    request: Request,
     resume_pdf: Annotated[UploadFile, File(...)],  # required
     jd_text: Annotated[str, Form()] = "",  # optional
     user_goal: Annotated[str, Form()] = "",  # optional
     anonymous_uuid: Annotated[str | None, Cookie()] = None,
-    current_user: Annotated[UserResponse | None, Depends(get_current_user)] = None,
 ):
     try:
-        if current_user:
-            redis_client = get_redis_client()
-            usage_key = f"free_resume_analyzer_usage:{current_user.uid}"
-            usage = await redis_client.get(usage_key)
-            if usage and int(usage) > ANALYZER_LIMIT:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"You have reached the maximum number of resume analyses for today. Please try again in {FREE_ANALYZER_RESET_WINDOW} days.",
-                )
+        current_user_id = None
+        if request.cookies.get("access_token"):
+            current_user_id = get_current_user_id(request)
+            if current_user_id:
+                redis_client = get_redis_client()
+                usage_key = f"free_resume_analyzer_usage:{current_user_id}"
         resume_bytes = await convert_file_to_bytes(resume_pdf)
         resume_text = extract_text_from_resume(resume_pdf, resume_bytes)
         free_tier_analyzer = await build_free_tier_graph()
@@ -82,7 +80,7 @@ async def analyze_resume_free_tier(
         }
         if anonymous_uuid:
             await increment_monthly_usage(anonymous_uuid)
-        if current_user:
+        if current_user_id:
             count = await redis_client.incr(usage_key)
             if count == 1:
                 await redis_client.expire(usage_key, FREE_ANALYZER_RESET_WINDOW)
