@@ -106,9 +106,11 @@ async def jobfinder_agent(
         {
             "role": "user",
             "content": """
+            You must use the jobs returned above only if there are any.
             Explain why these jobs are the best fit for the user based on the original resume text and the analyzed results dictionary or user requirements.
             Be concise and to the point.
             Use bullet points to list the reasons if it is appropriate.
+            ONLY explain why these jobs are the best fit for the user.
         """,
         }
     )

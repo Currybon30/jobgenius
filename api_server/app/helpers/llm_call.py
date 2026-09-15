@@ -82,49 +82,99 @@ def safe_parse(response: str, agent_name="unknown"):
 
 def _normalize_jobfinder_jobs(raw_jobs: Any) -> list[dict]:
     """Accept MCP / JSearch / JSON string shapes → list of job dicts."""
-    if not raw_jobs:
-        logger.error("[ERROR] agent7_jobfinder: returned no jobs")
-        return []
-
-    # Already a list of JSearch jobs
-    if isinstance(raw_jobs, list) and raw_jobs:
-        first = raw_jobs[0]
-        if isinstance(first, dict) and "job_id" in first:
-            return raw_jobs
-
-        # LangChain MCP: [{"type": "text", "text": "<json>"}]
-        if isinstance(first, dict) and "text" in first:
-            text = first["text"]
-            parsed = json.loads(text) if isinstance(text, str) else text
-            if isinstance(parsed, list):
-                return parsed
-            if isinstance(parsed, dict):
-                return [parsed]
+    try:
+        if not raw_jobs:
+            logger.error("[ERROR] agent7_jobfinder: returned no jobs")
             return []
 
-    # Single JSON string
-    if isinstance(raw_jobs, str):
-        parsed = json.loads(raw_jobs)
-        return parsed if isinstance(parsed, list) else [parsed]
+        # List
+        if isinstance(raw_jobs, list):
+            # Already a list of JSearch jobs
+            if all(
+                isinstance(job, dict) and "job_id" in job
+                for job in raw_jobs
+            ):
+                return raw_jobs
 
-    # Single job dict
-    if isinstance(raw_jobs, dict):
-        return [raw_jobs]
+            # LangChain MCP content blocks
+            for item in raw_jobs:
+                if not isinstance(item, dict) or "text" not in item:
+                    continue
 
-    return []
+                text = item["text"]
+
+                if not isinstance(text, str) or not text.strip():
+                    continue
+
+                parsed = safe_parse(text)
+
+                if isinstance(parsed, list):
+                    return parsed
+
+                if isinstance(parsed, dict):
+                    return [parsed]
+
+            logger.error(
+                "[ERROR] agent7_jobfinder: MCP returned no valid jobs"
+            )
+            return []
+
+        # Single JSON string
+        if isinstance(raw_jobs, str):
+            parsed = safe_parse(raw_jobs)
+
+            if parsed is None:
+                logger.error(
+                    "[ERROR] agent7_jobfinder: returned invalid/empty JSON"
+                )
+                return []
+
+            if isinstance(parsed, list):
+                return parsed
+
+            if isinstance(parsed, dict):
+                return [parsed]
+
+            return []
+
+        # Single job dict
+        if isinstance(raw_jobs, dict):
+            return [raw_jobs]
+
+        logger.error(
+            "[ERROR] agent7_jobfinder: unsupported type: %s",
+            type(raw_jobs).__name__,
+        )
+        return []
+
+    except Exception:
+        logger.exception(
+            "[ERROR] Failed to normalize agent7 jobfinder jobs"
+        )
+        return []
 
 
 def _last_assistant_content(messages: list) -> str:
-    if not messages:
+    try:
+        if not messages:
+            return ""
+        last = messages[-1]
+        if isinstance(last, dict):
+            content = last.get("content", "")
+        else:
+            content = getattr(last, "content", "")
+        content = content if isinstance(content, str) else str(content)
+        if content.startswith("```"):
+            content = re.sub(r"^```[a-zA-Z]*\n?", "", content)
+        if content.endswith("```"):
+            content = re.sub(r"\n?```$", "", content)
+        content = content.strip()
+        if content:
+            return codecs.decode(content, "unicode_escape")
+        return content
+    except Exception as e:
+        logger.error(f"[ERROR] Failed to get last assistant content: {e}")
         return ""
-    last = messages[-1]
-    if isinstance(last, dict):
-        content = last.get("content", "")
-    else:
-        content = getattr(last, "content", "")
-    returned_content = content if isinstance(content, str) else str(content)
-    returned_content = codecs.decode(returned_content, "unicode_escape")
-    return returned_content
 
 
 def agent7_jobfinder_format_result(messages: list[dict[str, Any]], raw_jobs: list[dict[str, Any]]):
