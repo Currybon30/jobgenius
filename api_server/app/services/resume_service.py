@@ -355,6 +355,7 @@ async def resolve_resume_id_for_recommendations(
             )
         return latest_resume_id
     except ValueError:
+        logger.info(f"No stored resume found for user {user_id}")
         raise
     except Exception as e:
         logger.error(f"Error resolving resume id for recommendations: {e}")

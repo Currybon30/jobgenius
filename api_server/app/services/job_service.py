@@ -25,10 +25,11 @@ mcp = FastMCP("job_service")
         language: The language to search for jobs (if given) - Default values: en
         date_posted: Date posted (if given) - Default values: all, today, 3days, week, month
         employment_types (optional): Employment types (if given) - Default values: FULLTIME, CONTRACTOR, PARTTIME, INTERN
+        job_requirements (optional): No default value - List of strings separated by commas: under_3_years_experience, more_than_3_years_experience, no_experience, no_degree
     Returns:
         A list of jobs in JSON format
     """)
-async def search_jobs(query: str, country: str = "ca", language: str = "en", date_posted: str = "all", employment_types: Optional[List[str]] = None):
+async def search_jobs(query: str, country: str = "ca", language: str = "en", date_posted: str = "all", employment_types: Optional[List[str]] = None, job_requirements: Optional[List[str]] = None):
     params = {
         "query": query,
         "num_pages": 2,
@@ -38,7 +39,8 @@ async def search_jobs(query: str, country: str = "ca", language: str = "en", dat
     }
     if employment_types:
         params["employment_types"] = ",".join(employment_types)
-
+    if job_requirements:
+        params["job_requirements"] = ",".join(job_requirements)
     response = await niquests.aget(
         f"{settings.JSEARCH_HOST}/search-v2",
         headers=settings.JSEARCH_HEADERS,
@@ -82,8 +84,8 @@ def _pinecone_job_metadata(job_data: dict) -> dict:
         for k, v in {
             "job_id": job_data.get("job_id"),
             "employer_name": job_data.get("employer_name"),
-            "job_city": job_data.get("job_city").lower().strip(),
-            "job_country": job_data.get("job_country").lower().strip(),
+            "job_city": job_data.get("job_city").lower().strip() if job_data.get("job_city") else "",
+            "job_country": job_data.get("job_country").lower().strip() if job_data.get("job_country") else "",
         }.items()
         if v is not None
     }
@@ -157,8 +159,12 @@ async def search_jobs_in_pinecone(query: str, job_city: str = "", job_country: s
         matches = results.get("matches", [])
         if not matches:
             return []
-        if job_city and job_country:
+        if job_city.strip() and job_country.strip():
             return [m for m in matches if m.get("metadata") and m.get("metadata").get("job_city") == job_city.lower().strip() and m.get("metadata").get("job_country") == job_country.lower().strip()]
+        elif job_city.strip():
+            return [m for m in matches if m.get("metadata") and m.get("metadata").get("job_city") == job_city.lower().strip()]
+        elif job_country.strip():
+            return [m for m in matches if m.get("metadata") and m.get("metadata").get("job_country") == job_country.lower().strip()]
         else:
             return matches
     except Exception as e:
