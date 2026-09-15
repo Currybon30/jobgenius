@@ -1,10 +1,10 @@
 import logging
 import time
 
-from api_server.app.helpers.user_helper import get_user_ip_address
 from app.auth.jwt_handler import decode_jwt
 from app.db.redis import get_redis_client
 from app.helpers.limit_helper import MONTH_LIMIT, MONTH_WINDOW, RATE_LIMIT, RATE_WINDOW
+from app.helpers.user_helper import get_user_ip_address
 from fastapi import FastAPI, Response, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -18,6 +18,8 @@ class MyBaseHTTPMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
 
     async def dispatch(self, request: Request, call_next):
+        if request.method == "OPTIONS":
+            return await call_next(request)
         start = time.time()
         logger.info("[START] Request: %s %s", request.method, request.url)
         try:
@@ -41,7 +43,9 @@ class MyBaseHTTPMiddleware(BaseHTTPMiddleware):
             if not ip:
                 return JSONResponse(
                     status_code=status.HTTP_407_PROXY_AUTHENTICATION_REQUIRED,
-                    content={"detail": "Proxy authentication required. Please configure your proxy to include the client-ip-address header."},
+                    content={
+                        "detail": "Proxy authentication required. Please configure your proxy to include the client-ip-address header."
+                    },
                 )
             anonymous_uuid = request.cookies.get("anonymous_uuid")
             if not anonymous_uuid:
@@ -71,10 +75,8 @@ class MyBaseHTTPMiddleware(BaseHTTPMiddleware):
                 return response
 
             usage_key = f"usage:{anonymous_uuid}"
-            usage = await redis_client.incr(usage_key)
-            if usage == 1:
-                await redis_client.expire(usage_key, MONTH_WINDOW)
-            if usage > MONTH_LIMIT:
+            usage = await redis_client.get(usage_key)
+            if usage and int(usage) > MONTH_LIMIT:
                 logger.warning(
                     "Monthly limit exceeded for anonymous UUID: %s", anonymous_uuid
                 )
