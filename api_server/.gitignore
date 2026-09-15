@@ -4,3 +4,5 @@ __pycache__
 .cursorignore
 external
 .pytest_cache
+.dockerignore
+requirements_docker.txt
