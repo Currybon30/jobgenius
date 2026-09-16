@@ -1,4 +1,5 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
+import { toast } from "react-toastify";
 
 export type FreeAnalyzeResult = {
   intent: Record<string, unknown>;
@@ -45,7 +46,13 @@ export async function freeAnalyzeResume(
     );
     return data;
   } catch (error) {
-    throw new Error(axiosErrorMessage(error));
+    console.error(error);
+    if (error instanceof AxiosError && error.response?.status === 400) {
+      toast.error(error.response.data.detail);
+    } else {
+      toast.error("Failed to analyze resume. Please try again later.");
+    }
+    throw error;
   }
 }
 
@@ -76,7 +83,7 @@ export async function premiumAnalyzeResume(
       formData,
       {
         withCredentials: true,
-        timeout: 180_000,
+        timeout: 270_000,
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -84,6 +91,12 @@ export async function premiumAnalyzeResume(
     );
     return data;
   } catch (error) {
-    throw new Error(axiosErrorMessage(error));
+    console.error(error);
+    if (error instanceof AxiosError && error.response?.status === 400) {
+      toast.error(error.response.data.detail);
+    } else {
+      toast.error("Failed to analyze resume. Please try again later.");
+    }
+    throw error;
   }
 }

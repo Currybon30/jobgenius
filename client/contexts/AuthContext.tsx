@@ -19,6 +19,8 @@ export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 const AUTH_STATUS_STORAGE_KEY = "jobgenius_auth_status";
 /** Access JWT TTL is 15 minutes — refresh slightly early to avoid expiry races. */
 const ACCESS_TOKEN_REFRESH_MS = 14 * 60 * 1000;
+/** Skip tab-focus refresh if we refreshed recently (avoids refresh-token rotation races). */
+const MIN_VISIBILITY_REFRESH_GAP_MS = 2 * 60 * 1000;
 
 export type AuthContextValue = {
   status: AuthStatus;
@@ -73,6 +75,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const initialFetchDoneRef = useRef(false);
   const fetchInFlightRef = useRef<Promise<AuthStatus> | null>(null);
   const tokenRefreshInFlightRef = useRef<Promise<void> | null>(null);
+  const lastTokenRefreshAtRef = useRef(0);
+
+  const markLoggedOut = useCallback(() => {
+    clearStoredStatus();
+    setStatus("unauthenticated");
+    setTier(null);
+  }, []);
 
   const refreshAuth = useCallback(async () => {
     if (fetchInFlightRef.current) {
@@ -101,29 +110,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const refreshAccessToken = useCallback(async () => {
-    if (tokenRefreshInFlightRef.current) {
-      await tokenRefreshInFlightRef.current;
-      return;
-    }
-
-    const run = (async () => {
-      try {
-        await handleRefreshToken();
-      } catch {
-        clearStoredStatus();
-        setStatus("unauthenticated");
-        setTier(null);
+  const refreshAccessToken = useCallback(
+    async (options?: { force?: boolean }) => {
+      const force = options?.force ?? false;
+      const now = Date.now();
+      if (
+        !force &&
+        now - lastTokenRefreshAtRef.current < MIN_VISIBILITY_REFRESH_GAP_MS
+      ) {
+        return;
       }
-    })();
 
-    tokenRefreshInFlightRef.current = run;
-    try {
-      await run;
-    } finally {
-      tokenRefreshInFlightRef.current = null;
-    }
-  }, []);
+      if (tokenRefreshInFlightRef.current) {
+        await tokenRefreshInFlightRef.current;
+        return;
+      }
+
+      const run = (async () => {
+        try {
+          await handleRefreshToken();
+          lastTokenRefreshAtRef.current = Date.now();
+        } catch {
+          // Refresh can fail from token-rotation races while cookies are still valid.
+          // Only clear the UI session if the access cookie also fails.
+          const stillAuthed = (await resolveAuthStatus()) === "authenticated";
+          if (stillAuthed) {
+            lastTokenRefreshAtRef.current = Date.now();
+            return;
+          }
+          markLoggedOut();
+        }
+      })();
+
+      tokenRefreshInFlightRef.current = run;
+      try {
+        await run;
+      } finally {
+        tokenRefreshInFlightRef.current = null;
+      }
+    },
+    [markLoggedOut],
+  );
 
   useEffect(() => {
     if (initialFetchDoneRef.current) return;
@@ -153,13 +180,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (status !== "authenticated") return;
 
+    // Interval must refresh even within the visibility gap.
     const intervalId = window.setInterval(() => {
-      void refreshAccessToken();
+      void refreshAccessToken({ force: true });
     }, ACCESS_TOKEN_REFRESH_MS);
 
     const onVisible = () => {
       if (document.visibilityState === "visible") {
-        void refreshAccessToken();
+        void refreshAccessToken({ force: false });
       }
     };
     document.addEventListener("visibilitychange", onVisible);

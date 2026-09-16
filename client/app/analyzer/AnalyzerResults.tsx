@@ -72,8 +72,8 @@ export function AnalyzerResults({ result, onAnalyzeAgain }: AnalyzerResultsProps
   const missingSoft = asStringList(analyzer.missing_soft_skills);
   const suggestions = asStringList(feedback.simple_suggestions);
 
-  localStorage.setItem("targetRole", targetRole);
-  localStorage.setItem("seniority", seniority);
+  sessionStorage.setItem("targetRole", targetRole);
+  sessionStorage.setItem("seniority", seniority);
 
   return (
     <div className="analyzer-results">

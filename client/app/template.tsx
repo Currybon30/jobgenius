@@ -14,7 +14,7 @@ export default function RootTemplate({
       <Footer />
       <ToastContainer
         position="top-right"
-        autoClose={2000}
+        autoClose={5000}
         hideProgressBar={true}
         style={{ marginTop: "60px" }}
       />

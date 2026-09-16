@@ -65,7 +65,9 @@ export function JobBriefPanel({
           <div className="analyzer-toggle-copy">
             <p className="analyzer-toggle-title">Include job finder</p>
             <p className="analyzer-toggle-lead">
-              Match roles to your resume after analysis — Premium only.
+              Match roles to your resume after analysis — Premium only. Turning
+              this on can take several minutes; the job finder adds a heavy
+              extra step.
             </p>
           </div>
           <button
@@ -74,7 +76,7 @@ export function JobBriefPanel({
             className={`analyzer-switch${includesJobFinder ? " is-on" : ""}`}
             role="switch"
             aria-checked={includesJobFinder}
-            aria-label="Include job finder"
+            aria-label="Include job finder (limit applied)"
             onClick={() => onIncludesJobFinderChange(!includesJobFinder)}
           >
             <span className="analyzer-switch-track" aria-hidden="true">

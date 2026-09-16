@@ -262,7 +262,7 @@ export function JobRecommenderWorkspace() {
   const { status, tier } = useAuth();
   const isPremium = tier?.toLowerCase() === "premium";
 
-  const [phase, setPhase] = useState<Phase>("loading");
+  const [phase, setPhase] = useState<Phase>("loading"); // idle, loading, searching
   const [mode, setMode] = useState<ResultsMode>("recommendations");
   const [jobs, setJobs] = useState<JobCardData[]>([]);
   const [promptJobs, setPromptJobs] = useState<JobCardData[]>([]);
@@ -271,8 +271,8 @@ export function JobRecommenderWorkspace() {
 
   const [file, setFile] = useState<File | null>(null);
   const [prompt, setPrompt] = useState("");
-  const [targetRole, setTargetRole] = useState("any job");
-  const [seniorityLevel, setSeniorityLevel] = useState("any level");
+  const [targetRole, setTargetRole] = useState("");
+  const [seniorityLevel, setSeniorityLevel] = useState("");
 
   useEffect(() => {
     if (status === "loading") return;
@@ -287,8 +287,8 @@ export function JobRecommenderWorkspace() {
       let role = targetRole;
       let seniority = seniorityLevel;
       if (typeof window !== "undefined") {
-        const savedRole = localStorage.getItem("targetRole")?.trim();
-        const savedSeniority = localStorage.getItem("seniority")?.trim();
+        const savedRole = sessionStorage.getItem("targetRole")?.trim();
+        const savedSeniority = sessionStorage.getItem("seniority")?.trim();
         if (savedRole) {
           role = savedRole;
           setTargetRole(savedRole);
@@ -304,7 +304,7 @@ export function JobRecommenderWorkspace() {
         if (status === "unauthenticated") {
           data = await getJobRecommendationsUnloggedInUser();
         } else if (isPremium) {
-          data = await getJobRecommendationsPremiumUser();
+          data = await getJobRecommendationsPremiumUser("", role, seniority);
         } else {
           data = await getJobRecommendationsFreeUser(role, seniority);
         }
@@ -373,6 +373,7 @@ export function JobRecommenderWorkspace() {
   }
 
   async function onPromptSearch() {
+    // TODO: implement abortcontroller to cancel the search if the user cancels the search.
     if (!file) {
       toast.error("Upload a PDF resume first.");
       return;
@@ -547,7 +548,7 @@ export function JobRecommenderWorkspace() {
                 type="text"
                 value={targetRole}
                 onChange={(event) => setTargetRole(event.target.value)}
-                placeholder="any job"
+                placeholder="developer, engineer, manager, etc."
               />
             </label>
             <label className="jobs-filter">
@@ -556,7 +557,7 @@ export function JobRecommenderWorkspace() {
                 type="text"
                 value={seniorityLevel}
                 onChange={(event) => setSeniorityLevel(event.target.value)}
-                placeholder="any level"
+                placeholder="junior, mid, senior, etc."
               />
             </label>
             <button
@@ -572,15 +573,15 @@ export function JobRecommenderWorkspace() {
           </div>
         ) : null}
 
-        {promptMessage && mode === "prompt" ? (
-          <p className="jobs-ai-message">{promptMessage}</p>
-        ) : null}
+        {promptMessage && mode === "prompt" && phase === "idle" ? (
+            <p className="jobs-ai-message">{promptMessage}</p>
+          ) : null}
 
         {phase === "loading" || phase === "searching" ? (
           <div className="jobs-status" aria-busy="true">
             {phase === "searching"
               ? "Reading your resume and hunting roles…"
-              : "Loading recommendations…"}
+              : "Loading…"}
           </div>
         ) : error && showingJobs.length === 0 ? (
           <p className="jobs-empty" role="alert">
