@@ -10,10 +10,13 @@ public class WebClientConfig {
     @Value("${API_KEY}")
     private String apiKey;
 
+    @Value("${FASTAPI_URL}")
+    private String fastapiUrl;
+
     @Bean
     public WebClient webClient() {
         return WebClient.builder()
-                .baseUrl("http://localhost:8000") // Base URL for the job recommendation service
+                .baseUrl(fastapiUrl) // Base URL for the job recommendation service
                 .defaultHeader("Content-Type", "application/json")
                 .defaultHeader("x-api-key", apiKey)
                 .build();

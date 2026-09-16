@@ -1,4 +1,5 @@
 import logging
+import os
 
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
@@ -17,6 +18,8 @@ async def init_mcp_client():
                 "command": "python",
                 "args": ["-m", "app.mcp.job_mcp"],
                 "transport": "stdio",
+                "cwd": "/app",
+                "env": dict(os.environ),
             }
         }
     )

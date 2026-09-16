@@ -1,0 +1,129 @@
+name: jobgenius
+
+services:
+  # Service 1: FastAPI API Server
+  api_server:
+    build:
+      context: ./api_server
+      dockerfile: Dockerfile
+    container_name: api-server
+    image: jobgenius-fastapi:1.0.0
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./api_server/.env
+    depends_on:
+      - redis
+      - mongodb
+      - mysql
+      - localstack
+      - pinecone
+    
+  # Service 2: Arq Worker for background tasks
+  worker:
+    container_name: fastapi-worker
+    image: jobgenius-fastapi:1.0.0
+    command: ["arq", "app.bg_worker.WorkerSettings"]
+    env_file:
+      - ./api_server/.env
+    depends_on:
+      - redis
+      - mongodb
+      - mysql
+      - localstack
+      - pinecone
+
+  # Service 3: Spring API Server
+  auth_server:
+    build:
+      context: ./auth_server
+      dockerfile: Dockerfile
+    container_name: auth-server
+    image: auth-server:1.0.0
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./auth_server/.env
+    depends_on:
+      - redis
+      - mysql
+    
+  # Service 4: Redis
+  redis:
+    container_name: redis
+    image: redis:latest
+    ports:
+      - "6379:6379"
+  
+  # Service 5: MongoDB
+  mongodb:
+    container_name: mongodb
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - ${MONGO_DATA_DIR:-./mongo_data}:/data/db
+  
+  # Service 6: Pinecone local
+  pinecone:
+    container_name: pinecone-local
+    image: ghcr.io/pinecone-io/pinecone-local:latest
+    environment: 
+      PORT: 5080
+      PINECONE_HOST: pinecone.local
+    ports: 
+      - "5080-5090:5080-5090"
+    platform: linux/amd64
+    networks:
+      default:
+        aliases:
+          - pinecone.local
+
+  # Service 7: MySQL (Alternative run with XAMPP)
+  mysql:
+    container_name: mysql
+    image: mysql:latest
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+    env_file:
+      - ./.env
+    volumes:
+      - ${MYSQL_DATA_DIR:-./mysql_data}:/var/lib/mysql
+
+  phpmyadmin:
+    container_name: phpmyadmin
+    image: phpmyadmin:latest
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: ${PHPMYADMIN_MYSQL_HOST}
+      PMA_PORT: ${PHPMYADMIN_MYSQL_PORT}
+      PMA_USER: ${PHPMYADMIN_MYSQL_USER}
+      PMA_PASSWORD: ${PHPMYADMIN_MYSQL_PASSWORD}
+    depends_on:
+      - mysql
+    
+  # Service 8: LocalStack
+  localstack:
+    container_name: localstack
+    image: localstack/localstack-pro:latest
+    ports:
+      - '127.0.0.1:4566:4566' # LocalStack gateway
+      - '127.0.0.1:4510-4559:4510-4559' # external services port range
+      - '127.0.0.1:443:443' # LocalStack HTTPS Gateway
+    environment:
+      # Activate LocalStack for AWS: https://docs.localstack.cloud/getting-started/auth-token/
+      - LOCALSTACK_AUTH_TOKEN=${LOCALSTACK_AUTH_TOKEN:?}
+      # LocalStack configuration: https://docs.localstack.cloud/references/configuration/
+      - DEBUG=${LOCAL_STACK_DEBUG}
+      - PERSISTENCE=${LOCAL_STACK_PERSISTENCE}
+    volumes:
+      - ${LOCALSTACK_DATA_DIR:-./localstack_data}:/var/lib/localstack
+      - '/var/run/docker.sock:/var/run/docker.sock' # Docker socket for LocalStack to manage containers
+
+volumes:
+  mongo_data:
+  mysql_data:
+  localstack_data:

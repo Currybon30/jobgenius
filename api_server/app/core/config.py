@@ -39,24 +39,24 @@ class Settings(BaseSettings):
     SQL_DB_URL: str
 
     # ⚡ Redis
-    REDIS_HOST: str = "localhost"
+    REDIS_HOST: str = "redis"
     REDIS_PORT: int = 6379
     REDIS_ARQ_DB: int = 1  # keep cache/rate-limit on default db=0
 
     # 🛢 Localstack S3
-    LOCALSTACK_HOST: str = "http://localhost:4566"
+    LOCALSTACK_HOST: str = "http://localstack:4566"
     LOCALSTACK_ACCESS_KEY: str = "test"
     LOCALSTACK_SECRET_ACCESS_KEY: str = "test"
     LOCALSTACK_REGION_NAME: str = "us-east-1"
     S3_BUCKET_NAME: str = "jobgenius-resume-bucket"
 
     # 🛢 Database (NoSQL)
-    MONGODB_URI: str = "mongodb://localhost:27017/"
+    MONGODB_URI: str = "mongodb://mongodb:27017/"
     MONGODB_NAME: str = "job_recommendation_system"
 
     # 🛢 Vector Database
     PINECONE_API_KEY: str = "pc_local_api_key"
-    PINECONE_HOST: str = "http://localhost:5080"
+    PINECONE_HOST: str = "http://pinecone.local:5080"
     PINECONE_INDEX_NAME: str = "pc-job-recommendation-system-v1"
 
     model_config = SettingsConfigDict(env_file=BASE_DIR / ".env", env_file_encoding="utf-8") # class Config is deprecated, will be removed in the future

@@ -39,6 +39,12 @@ async def init_pinecone():
     elif host.startswith("https://"):
         # Local only: force http
         host = "http://" + host.removeprefix("https://")
+
+    # Pinecone SDK requires a hostname with a "." (or localhost).
+    # Docker service name "pinecone" has no dot; use Compose alias.
+    host = host.replace("://pinecone:", "://pinecone.local:")
+    host = host.replace("://pinecone/", "://pinecone.local/")
+
     pinecone_index = pinecone_client.IndexAsyncio(
         host=host,
         ssl_verify=False
