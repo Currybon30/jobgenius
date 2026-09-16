@@ -1,19 +1,31 @@
 package com.jobgenius.models;
 
+import java.time.OffsetDateTime;
+
 import com.jobgenius.utils.PaymentStatus;
-import jakarta.persistence.*;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.ForeignKey;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.OffsetDateTime;
-
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
 @Table(name = "payments", indexes = {
-                @Index(name = "idx_payment_user_id", columnList = "uid")
+        @Index(name = "idx_payment_user_id", columnList = "uid")
 })
 @Getter
 @Setter

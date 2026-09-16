@@ -1,17 +1,26 @@
 package com.jobgenius.models;
 
-import jakarta.persistence.*;
+import java.util.Date;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.ForeignKey;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
-
-import java.util.Date;
 
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
 @Table(name = "refresh_tokens", indexes = {
-        @Index(name = "idx_refresh_token", columnList = "refreshToken"),
-        @Index(name = "idx_user_id", columnList = "uid")
+    @Index(name = "idx_refresh_token", columnList = "refreshToken"),
+    @Index(name = "idx_user_id", columnList = "uid")
 })
 public class RefreshToken {
     @Id
