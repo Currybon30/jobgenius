@@ -4,8 +4,22 @@ Updates in Sep 15, 2026
 Upcoming implementations:
 - frontend (my account page, usage & billing, settings & privacy)
 - frontend (handle error messages from the servers to users properly)
-- frontend (implement abortcontroller to cancel the search if the user cancels the search.)
+- frontend (premium: recommendations - implement the notice to users that the recommended jobs 
+            are being fetched, it takes a few seconds to a few minutes 
+            due to comparing the user's resume with the jobs)
 - README.md for the project.
+
+My account page components:
+- Show the user's profile information.
+- Premium: View resume upload history.
+
+Usage & Billing page components:
+- Show the user's usage and billing information.
+
+Settings & Privacy page components:
+- Show the user's settings and privacy information.
+- Change the password.
+- Delete the account.
 
 Next version of the API_SERVER:
 - Handle the case where job finder returns no jobs, but the message has a message with some jobs to users.
