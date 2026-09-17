@@ -114,9 +114,6 @@ public class LoginController {
             String newAccessToken = tokens.get("access_token");
             String newRefreshToken = tokens.get("refresh_token");
 
-            System.out.println("New Access Token: " + newAccessToken);
-
-
             ResponseCookie cookie = ResponseCookie.from("access_token", Objects.requireNonNull(newAccessToken))
                     .httpOnly(true)
                     .secure(true)

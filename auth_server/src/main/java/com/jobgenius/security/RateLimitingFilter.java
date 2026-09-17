@@ -34,7 +34,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
                     filterChain.doFilter(request, response); // Skip rate limiting for authenticated users
                     return;
                 }
-                if (cookie.getName().equals("anonymousUuid")) {
+                if (cookie.getName().equals("anonymous_uuid")) {
                     anonymousUuid = cookie.getValue();
                 }
             }
