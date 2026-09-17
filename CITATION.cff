@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Pham
+    given-names: Tuong Nguyen
+    orcid: https://orcid.org/0009-0003-7411-1336
+title: "JobGenius: Resume Analyzer and Job Recommender System"
+keywords: resume analyzer, job recommender system, future career
+version: 1.0.0
+repository-code: https://github.com/Currybon30/jobgenius
+license: MIT
+date-released: TBD Release Date
