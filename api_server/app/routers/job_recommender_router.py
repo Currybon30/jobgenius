@@ -160,6 +160,14 @@ async def get_job_recommendations_free_user(
 
 
         cache_input = f"{target_role}_{seniority_level}_{city}_{country_code}".lower().strip()
+        logger.info(
+            "cache_input=%r role=%r seniority=%r city=%r country=%r",
+            cache_input,
+            target_role,
+            seniority_level,
+            city,
+            country_code,
+        )
         cache_hash = hashlib.sha256(cache_input.encode()).hexdigest()[:16]
         recommendations_cache_key = f"recommendations_cache:free:{cache_hash}"
         recommendations = await cache_get(recommendations_cache_key)
@@ -234,9 +242,6 @@ async def get_job_recommendations_premium_user(
     country = ""
     country_code = ""
     try:
-        resolved_resume_id = await resolve_resume_id_for_recommendations(
-            current_user_id, resume_id
-        )
         ip = get_user_ip_address(request)
         if not ip:
             raise HTTPException(
@@ -249,6 +254,10 @@ async def get_job_recommendations_premium_user(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Failed to get user's city and country",
             )
+            
+        resolved_resume_id = await resolve_resume_id_for_recommendations(
+            current_user_id, resume_id
+        )
 
         cache_input = f"{resolved_resume_id}_{city}_{country_code}".lower().strip()
         cache_hash = hashlib.sha256(cache_input.encode()).hexdigest()[:16]
@@ -263,8 +272,8 @@ async def get_job_recommendations_premium_user(
         result = await job_recommendation_with_pinecone(
             current_user_id,
             resolved_resume_id,
-            job_city=city or "",
-            job_country=country_code or "",
+            job_city=city,
+            job_country=country_code,
         )
 
         if isinstance(result, list) and result:
@@ -291,6 +300,7 @@ async def get_job_recommendations_premium_user(
                     detail="Failed to get user's city and country",
                 )
 
+            logger.info("Could not find jobs in Pinecone. Falling back to agent7_jobfinder")
             user_requirements = (
                 f"I have provided my resume text. Help me find the best jobs for me "
                 f"in {city}, {country}."
@@ -325,30 +335,12 @@ async def get_job_recommendations_premium_user(
         raise
     except ValueError as e:
         if "No stored resume found" in str(e):
-            # Fall back to recommendations for free user in cache if no resume is found 
-            redis_client = get_redis_client()
-            if target_role == "any job" and seniority_level == "":
-                saved_target_role = await redis_client.get(f"target_role:{current_user_id}")
-                saved_seniority_level = await redis_client.get(f"seniority_level:{current_user_id}")
-                if saved_target_role:
-                    target_role = saved_target_role
-                if saved_seniority_level:
-                    seniority_level = saved_seniority_level
-            else:
-                target_role_key = f"target_role:{current_user_id}"
-                seniority_level_key = f"seniority_level:{current_user_id}"
-                await redis_client.set(target_role_key, target_role, ex=FREE_RECOMMENDATIONS_CACHE_TTL)
-                await redis_client.set(seniority_level_key, seniority_level, ex=FREE_RECOMMENDATIONS_CACHE_TTL)
             
-            logger.info(f"No stored resume found for user {current_user_id}. Falling back to free user recommendations.")
-            free_recommendations_cache_key = f"{target_role}_{seniority_level}_{city}_{country_code}".lower().strip()
-            cache_hash = hashlib.sha256(free_recommendations_cache_key.encode()).hexdigest()[:16]
-            free_recommendations_cache_key = f"recommendations_cache:free:{cache_hash}"
-            cached = await cache_get(free_recommendations_cache_key)
             if cached:
                 return JSONResponse(
                     status_code=status.HTTP_200_OK,
                     content=json.loads(cached),
+                    headers={"fallback": "true"},
                 )
         else:
             raise HTTPException(

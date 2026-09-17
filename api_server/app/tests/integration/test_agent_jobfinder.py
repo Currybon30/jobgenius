@@ -8,9 +8,11 @@ from app.helpers.llm_call import agent7_jobfinder_format_result
 
 
 async def test_agent_jobfinder():
+    print("Testing agent jobfinder")
     await init_mcp_client()
+    print("MCP client initialized")
     pdf_bytes = Path(
-        r"D:\IT\My Projects\job_recommender_system\api_server\external\Tuong_Nguyen_Pham_Resume.pdf"
+        r"D:\IT\My Projects\jobgenius\api_server\external\Tuong_Nguyen_Pham_Resume.pdf"
     ).read_bytes()
     doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
     text = ""

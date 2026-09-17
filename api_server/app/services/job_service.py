@@ -70,13 +70,17 @@ async def _store_jobs_to_mongodb(job_data, json_to_text: str, pinecone_id: Optio
     )
 
 async def get_job_from_mongodb(job_id: str) -> dict:
-    mongo_client = get_mongo_client()
-    mongo_db = mongo_client[settings.MONGODB_NAME]
-    jobs_collection = mongo_db["jobs"]
-    job = await jobs_collection.find_one({"id": job_id})
-    if not job:
+    try:
+        mongo_client = get_mongo_client()
+        mongo_db = mongo_client[settings.MONGODB_NAME]
+        jobs_collection = mongo_db["jobs"]
+        job = await jobs_collection.find_one({"id": job_id})
+        if not job:
+            return None
+        return Job.model_validate(job).model_dump(mode="json")
+    except Exception as e:
+        logger.error(f"Error getting job from MongoDB: {e}")
         return None
-    return Job.model_validate(job).model_dump()
 
 def _pinecone_job_metadata(job_data: dict) -> dict:
     return {
@@ -84,8 +88,8 @@ def _pinecone_job_metadata(job_data: dict) -> dict:
         for k, v in {
             "job_id": job_data.get("job_id"),
             "employer_name": job_data.get("employer_name"),
-            "job_city": job_data.get("job_city").lower().strip() if job_data.get("job_city") else "",
-            "job_country": job_data.get("job_country").lower().strip() if job_data.get("job_country") else "",
+            "job_city": job_data.get("job_city").upper().strip() if job_data.get("job_city") else "",
+            "job_country": job_data.get("job_country").upper().strip() if job_data.get("job_country") else "",
         }.items()
         if v is not None
     }
@@ -144,7 +148,7 @@ async def store_jobs_to_pinecone(data):
         logger.error(f"Error storing jobs to MongoDB and Pinecone: {e}")
         return False
 
-async def search_jobs_in_pinecone(query: str, job_city: str = "", job_country: str = "") -> List[dict]:
+async def search_jobs_in_pinecone(query: str) -> List[dict]:
     try:
         pinecone_index = get_pinecone_index()
         embedding = await embed_text(query)
@@ -153,20 +157,14 @@ async def search_jobs_in_pinecone(query: str, job_city: str = "", job_country: s
 
         results = await pinecone_index.query(
             vector=embedding,
-            top_k=10,
+            top_k=20,
             namespace="jobs",
+            include_metadata=True,
         )
         matches = results.get("matches", [])
         if not matches:
             return []
-        if job_city.strip() and job_country.strip():
-            return [m for m in matches if m.get("metadata") and m.get("metadata").get("job_city") == job_city.lower().strip() and m.get("metadata").get("job_country") == job_country.lower().strip()]
-        elif job_city.strip():
-            return [m for m in matches if m.get("metadata") and m.get("metadata").get("job_city") == job_city.lower().strip()]
-        elif job_country.strip():
-            return [m for m in matches if m.get("metadata") and m.get("metadata").get("job_country") == job_country.lower().strip()]
-        else:
-            return matches
+        return matches
     except Exception as e:
         logger.error(f"Error getting jobs in Pinecone: {e}")
         return []
@@ -180,15 +178,54 @@ async def job_recommendation_with_pinecone(user_id: int, resume_id: str, job_cit
         resume_text = resume.get("full_combined_text") or ""
         if not resume_text.strip():
             return {"error": "Resume has no searchable text"}
-        matches = await search_jobs_in_pinecone(resume_text, job_city, job_country)
+        matches = await search_jobs_in_pinecone(resume_text)
         if not matches:
+            logger.info("No jobs found in Pinecone")
             return {"error": "No jobs found", "resume_text": resume_text}
-        matches = [m for m in matches if m.get("score", 0) > 0.65]
+        
+        
+        lowest_similarity_threshold = min(m.get("score", 0) for m in matches)
+        max_similarity_threshold = max(m.get("score", 0) for m in matches)
+
+        logger.info(f"Number of jobs found in Pinecone: {len(matches)}")
+        logger.info(f"Lowest similarity: {lowest_similarity_threshold}")
+        logger.info(f"Max similarity: {max_similarity_threshold}")
+        
+        # Rules for filtering jobs:
+        # 0. Filter jobs with similarity more than 0.4
+        # 1. Filter jobs in the given city and country
+        # 2. If less than 10 jobs are found, get more jobs from other cities
+        # 3. If less than 10 jobs are found, get more jobs from other countries
+        
+        scored = [m for m in matches if m.get("score", 0) > 0.35]
+        def meta(m):
+            md = m.get("metadata") or {}
+            return (
+                (md.get("job_city") or "").upper().strip(),
+                (md.get("job_country") or "").upper().strip(),
+            )
+        want_city = (job_city or "").upper().strip()
+        want_country = (job_country or "").upper().strip()
+        local = [m for m in scored if meta(m) == (want_city, want_country)]
+        same_country = [
+            m for m in scored
+            if meta(m)[1] == want_country and meta(m)[0] != want_city
+        ]
+        other_country = [m for m in scored if meta(m)[1] != want_country]
+        # Prefer local, then fill up to 10
+        merged = local[:]
+        if len(merged) < 10:
+            merged.extend(same_country)
+        if len(merged) < 10:
+            merged.extend(other_country)
+        matches = merged[:10]
         if not matches:
+            logger.info("No jobs found above similarity threshold")
             return {"error": "No jobs above similarity threshold", "resume_text": resume_text}
         recommended_jobs = []
         for match in matches:
-            job_id = (match.get("metadata") or {}).get("job_id")
+            match_metadata = (match.get("metadata") or {})
+            job_id = match_metadata.get("job_id")
             if not job_id:
                 continue
             job = await get_job_from_mongodb(job_id)

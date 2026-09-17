@@ -21,11 +21,12 @@ class Settings(BaseSettings):
     CORS_ALLOW_CREDENTIALS: bool = True
     CORS_ALLOW_METHODS: List[str] = ["*"]
     CORS_ALLOW_HEADERS: List[str] = ["*"]
+    CORS_ALLOW_EXPOSE_HEADERS: List[str] = ["fallback"]
 
     # 🤖 AI
     OLLAMA_MODEL: str = "qwen2.5:7b"
     EMBEDDING_MODEL: str = "nomic-embed-text-v2-moe:latest"
-    OLLAMA_HOST: str = "http://localhost:11434"
+    OLLAMA_HOST: str = "http://ollama.local:11434"
 
     # 🔎 Job Search API (RapidAPI - Global Jobs Search)
     JSEARCH_HOST: str = "https://jsearch.p.rapidapi.com"
