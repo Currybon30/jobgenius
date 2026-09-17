@@ -1,44 +1,41 @@
 import axios, { AxiosError } from "axios";
 import { authConfig } from "../auth/api";
 import { toast } from "react-toastify";
+import { AuthOptions } from "@/auth/types";
+import { axiosErrorMessage } from "@/utils/errorHelpers";
 
 export async function createCheckoutSession(
   successUrl: string,
   cancelUrl: string,
-): Promise<string> {
+  options?: AuthOptions,
+): Promise<string | null> {
   try {
     const { data } = await axios.post<{ checkoutUrl: string }>(
       `${process.env.NEXT_PUBLIC_SPRING_API_URL}/api/payments/create-checkout-session`,
       { successUrl, cancelUrl },
-      authConfig({ timeout: 15_000 }),
+      authConfig(options),
     );
     return data.checkoutUrl;
-  } catch (error) {
-    console.error(error);
-    if (error instanceof AxiosError && error.response?.status === 400) {
-      toast.error(error.response.data.detail);
-    } else {
-      toast.error("Failed to create checkout session. Please try again later.");
-    }
-    throw error;
+  } catch (error: unknown) {
+    const errorMessage = axiosErrorMessage(error, "Failed to create checkout session. Please try again later.");
+    toast.error(errorMessage);
+    console.error(errorMessage);
+    return null;
   }
 }
 
 
-export async function cancelSubscription(): Promise<string> {
+export async function cancelSubscription(): Promise<string | null> {
   try {
     const { data } = await axios.post<{ message: string }>(
       `${process.env.NEXT_PUBLIC_SPRING_API_URL}/api/payments/cancel-subscription`,
       authConfig({ timeout: 15_000 }),
     );
     return data.message;
-  } catch (error) {
-    console.error(error);
-    if (error instanceof AxiosError && error.response?.status === 400) {
-      toast.error(error.response.data.detail);
-    } else {
-      toast.error("Failed to cancel subscription. Please try again later.");
-    }
-    throw error;
+  } catch (error: unknown) {
+    const errorMessage = axiosErrorMessage(error, "Failed to cancel subscription. Please try again later.");
+    toast.error(errorMessage);
+    console.error(errorMessage);
+    return null;
   }
 }

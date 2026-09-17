@@ -1,22 +1,21 @@
-import axios, { AxiosError } from "axios";
+import axios from "axios";
 import { authConfig } from "../auth/api";
-import { toast } from "react-toastify";
+import { toast, ToastContent } from "react-toastify";
+import { axiosErrorMessage } from "../utils/errorHelpers";
+import { AuthOptions } from "@/auth/types";
 
-export async function getAllUsers(): Promise<unknown> {
+export async function getAllUsers(options?: AuthOptions): Promise<unknown> {
     try {
         const { data } = await axios.get(
             `${process.env.NEXT_PUBLIC_SPRING_API_URL}/api/users`,
-            authConfig(),
+            authConfig(options),
         );
         return data;
-    } catch (error) {
-        console.error(error);
-        if (error instanceof AxiosError && error.response?.status === 400) {
-            toast.error(error.response.data.detail);
-        } else {
-            toast.error("Failed to get all users. Please try again later.");
-        }
-        throw error;
+    } catch (error: unknown) {
+        const errorMessage = axiosErrorMessage(error, "Failed to get all users. Please try again later.");
+        toast.error(errorMessage);
+        console.error(errorMessage);
+        return null;
     }
 }
 
@@ -27,21 +26,29 @@ export async function getCurrentUser(): Promise<unknown> {
             authConfig(),
         );
         return data;
-    } catch (error) {
-        console.error(error);
-        throw error;
+    } catch (error: unknown) {
+        const errorMessage = axiosErrorMessage(error, "Failed to get current user. Please try again later.");
+        if (axios.isAxiosError(error) && error.response?.status == 429) {
+            toast.error(errorMessage);
+        }
+        console.error(errorMessage);
+        return null;
     }
 }
 
-export async function getUserPlan(): Promise<string> {
+export async function getUserPlan(): Promise<string | null> {
     try {
         const { data } = await axios.get(
         `${process.env.NEXT_PUBLIC_FASTAPI_API_URL}/api/users/me`,
         authConfig(),
         );
         return data.plan as string;
-    } catch (error) {
-        console.error(error);
-        throw error;
+    } catch (error: unknown) {
+        const errorMessage = axiosErrorMessage(error, "Failed to get user plan. Please try again later.");
+        if (axios.isAxiosError(error) && error.response?.status == 429) {
+            toast.error(errorMessage);
+        }
+        console.error(errorMessage);
+        return null;
     }
 }

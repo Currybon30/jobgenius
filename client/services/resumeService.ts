@@ -1,5 +1,8 @@
 import axios, { AxiosError } from "axios";
 import { toast } from "react-toastify";
+import { axiosErrorMessage } from "../utils/errorHelpers";
+import { AuthOptions } from "@/auth/types";
+import { authConfig } from "@/auth/api";
 
 export type FreeAnalyzeResult = {
   intent: Record<string, unknown>;
@@ -8,25 +11,12 @@ export type FreeAnalyzeResult = {
   feedback: Record<string, unknown> | string;
 };
 
-function axiosErrorMessage(error: unknown): string {
-  if (!axios.isAxiosError(error)) {
-    return error instanceof Error ? error.message : "Request failed.";
-  }
-  const data = error.response?.data as
-    | { detail?: string | { msg?: string }[]; message?: string }
-    | undefined;
-  const detail = data?.detail;
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail) && detail[0]?.msg) return detail[0].msg;
-  if (typeof data?.message === "string") return data.message;
-  return error.message || "Request failed.";
-}
-
 export async function freeAnalyzeResume(
   resumePdf: File,
   jdText: string = "",
   userGoal: string = "",
-): Promise<FreeAnalyzeResult> {
+  options?: AuthOptions,
+): Promise<FreeAnalyzeResult | null> {
   try {
     const formData = new FormData();
     formData.append("resume_pdf", resumePdf);
@@ -36,23 +26,15 @@ export async function freeAnalyzeResume(
     const { data } = await axios.post<FreeAnalyzeResult>(
       `${process.env.NEXT_PUBLIC_FASTAPI_API_URL}/api/resume/analyze`,
       formData,
-      {
-        withCredentials: true,
-        timeout: 180_000,
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      },
+      authConfig(options),
     );
     return data;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error(error);
-    if (error instanceof AxiosError && error.response?.status === 400) {
-      toast.error(error.response.data.detail);
-    } else {
-      toast.error("Failed to analyze resume. Please try again later.");
-    }
-    throw error;
+    const errorMessage = axiosErrorMessage(error, "Failed to analyze resume. Please try again later.");
+    toast.error(errorMessage);
+    console.error(errorMessage);
+    return null;
   }
 }
 
@@ -70,7 +52,8 @@ export async function premiumAnalyzeResume(
   jdText: string = "",
   userGoal: string = "",
   includesJobFinder: boolean = false,
-): Promise<PremiumAnalyzeResult> {
+  options?: AuthOptions,
+): Promise<PremiumAnalyzeResult | null> {
   try {
     const formData = new FormData();
     formData.append("resume_pdf", resumePdf);
@@ -81,22 +64,14 @@ export async function premiumAnalyzeResume(
     const { data } = await axios.post<PremiumAnalyzeResult>(
       `${process.env.NEXT_PUBLIC_FASTAPI_API_URL}/api/resume/analyze/premium`,
       formData,
-      {
-        withCredentials: true,
-        timeout: 270_000,
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      },
+      authConfig(options),
     );
     return data;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error(error);
-    if (error instanceof AxiosError && error.response?.status === 400) {
-      toast.error(error.response.data.detail);
-    } else {
-      toast.error("Failed to analyze resume. Please try again later.");
-    }
-    throw error;
+    const errorMessage = axiosErrorMessage(error, "Failed to analyze resume. Please try again later.");
+    toast.error(errorMessage);
+    console.error(errorMessage);
+    return null;
   }
 }
