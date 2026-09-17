@@ -39,6 +39,13 @@ async def jobfinder_agent(
                 - Call the search_jobs tool
                 - Briefly explain why returned jobs fit
 
+                When calling search_jobs:
+                - query MUST look like: "{role} in {city}, {country}"
+                - Infer city/country from resume or user_requirements (e.g. Windsor, Toronto, Canada)
+                - Always pass country as a 2-letter code (e.g. ca)
+                - Prefer 1-2 focused searches over vague role-only queries
+                - Avoid country-only queries like "software engineer Canada"
+
                 Forbidden actions:
                 - Do NOT rewrite the resume
                 - Do NOT optimize, improve, or reformat the resume
