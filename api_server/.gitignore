@@ -5,4 +5,3 @@ __pycache__
 external
 .pytest_cache
 .dockerignore
-requirements_docker.txt
