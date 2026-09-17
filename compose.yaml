@@ -18,6 +18,10 @@ services:
       - mysql
       - localstack
       - pinecone
+    networks:
+      default:
+        aliases:
+          - api.jobgenius.local
     
   # Service 2: Arq Worker for background tasks
   worker:
@@ -39,7 +43,7 @@ services:
       context: ./auth_server
       dockerfile: Dockerfile
     container_name: auth-server
-    image: auth-server:1.0.0
+    image: jobgenius-spring:1.0.0
     ports:
       - "5000:5000"
     env_file:
@@ -47,6 +51,7 @@ services:
     depends_on:
       - redis
       - mysql
+      - api_server
     
   # Service 4: Redis
   redis:
@@ -123,7 +128,68 @@ services:
       - ${LOCALSTACK_DATA_DIR:-./localstack_data}:/var/lib/localstack
       - '/var/run/docker.sock:/var/run/docker.sock' # Docker socket for LocalStack to manage containers
 
+  # Service 9: Stripe
+  stripe:
+    container_name: stripe
+    image: stripe/stripe-cli:latest
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    depends_on:
+      - auth_server
+    command: listen --api-key ${STRIPE_SECRET_KEY} --forward-to http://auth-server:5000/api/stripe/webhook --skip-update --skip-verify
+
+  # Service 10: Ollama
+  ollama:
+    container_name: ollama
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ${OLLAMA_DATA_DIR:-./ollama_data}:/root/.ollama
+    networks:
+      default:
+        aliases:
+          - ollama.local
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    pull_policy: always # pull the latest image from the registry
+    tty: true # enable TTY for interactive mode
+    # GPU resources for ollama (uncomment if you have a GPU)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # Service 11: Ollama WebUI (uncomment if you want to use the ollama web)
+  # ollama_webui:
+  #   container_name: ollama_webui
+  #   image: ghcr.io/ollama-webui/ollama-webui:main
+  #   ports:
+  #     - "11435:8080" # port 8080 is the default port for ollama webui
+  #   volumes:
+  #     - ${OLLAMA_WEBUI_DATA_DIR:-./ollama_webui_data}:/app/data
+  #   depends_on:
+  #     - ollama
+  #   env_file:
+  #     - ./.env
+  #   restart: unless-stopped
+  #   networks:
+  #     default:
+  #       aliases:
+  #         - ollama_webui.local
+
 volumes:
   mongo_data:
   mysql_data:
   localstack_data:
+  ollama_data:
+  ollama_webui_data:

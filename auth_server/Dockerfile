@@ -1,5 +1,6 @@
 # Builder stage
 FROM eclipse-temurin:17-jdk-alpine AS builder
+LABEL org.opencontainers.image.authors="Tuong Nguyen Pham <tuongnguyen2004danang@gmail.com>"
 WORKDIR /app
 
 COPY mvnw .

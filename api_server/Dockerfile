@@ -1,6 +1,6 @@
 # use the python 3.11.5 slim image
 FROM python:3.11.5-slim
-
+LABEL org.opencontainers.image.authors="Tuong Nguyen Pham <tuongnguyen2004danang@gmail.com>"
 # set the working directory for the application
 WORKDIR /app
 
