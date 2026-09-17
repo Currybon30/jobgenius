@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import {
   freeAnalyzeResume,
@@ -13,6 +13,7 @@ import { JobBriefPanel } from "./JobBriefPanel";
 import { AnalyzerLoading } from "./AnalyzerLoading";
 import { AnalyzerResults } from "./AnalyzerResults";
 import { useAuth } from "@/contexts/AuthContext";
+import { AuthOptions } from "@/auth/types";
 
 type Phase = "idle" | "loading" | "done";
 
@@ -24,8 +25,19 @@ export function AnalyzerWorkspace() {
   const [includesJobFinder, setIncludesJobFinder] = useState(false);
   const [phase, setPhase] = useState<Phase>("idle");
   const [result, setResult] = useState<FreeAnalyzeResult | PremiumAnalyzeResult | null>(null);
+  const controllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      controllerRef.current?.abort();
+    };
+  }, []);
 
   async function onAnalyze() {
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    
     if (!file) {
       toast.error("Upload a PDF resume first.");
       return;
@@ -35,11 +47,20 @@ export function AnalyzerWorkspace() {
     setResult(null);
 
     try {
+      const options: AuthOptions = {
+        signal: controller.signal,
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        timeout: 180_000,
+      };
+
       if (tier?.toLowerCase() !== "premium") {
         const data = await freeAnalyzeResume(
           file,
           jobDescription.trim(),
           requirements.trim(),
+          options,
         );
         setResult(data as FreeAnalyzeResult);
         setPhase("done");
@@ -49,15 +70,24 @@ export function AnalyzerWorkspace() {
           jobDescription.trim(),
           requirements.trim(),
           includesJobFinder,
+          options,
         );
+        if (controller.signal.aborted || controllerRef.current !== controller) return;
+        if (!data) { setPhase("idle"); return; } // if services keep returning null
+
         setResult(data as PremiumAnalyzeResult);
         setPhase("done");
       }
     } catch (error) {
+      if (controller.signal.aborted || controllerRef.current !== controller) return;
       const message =
         error instanceof Error ? error.message : "Analysis failed. Please try again.";
       toast.error(message);
       setPhase("idle");
+    } finally {
+      if (controllerRef.current === controller) {
+        controllerRef.current = null;
+      }
     }
   }
 

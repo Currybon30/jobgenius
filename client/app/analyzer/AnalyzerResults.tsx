@@ -84,7 +84,7 @@ export function AnalyzerResults({ result, onAnalyzeAgain }: AnalyzerResultsProps
             {targetRole ? `Fit notes for ${targetRole}` : "Resume fit notes"}
           </h2>
           <p className="analyzer-results-meta">
-            {[seniority, industry].filter(Boolean).join(" · ") ||
+            {[seniority, industry?.charAt(0).toUpperCase() + industry?.slice(1)].filter(Boolean).join(" · ") ||
               "General resume quality and structure feedback"}
           </p>
         </div>

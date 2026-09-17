@@ -19,6 +19,7 @@ import {
   jobSearchWithPrompt,
 } from "@/services/jobService";
 import { extractJobsPayload, type JobCardData } from "./jobNormalize";
+import { AuthOptions } from "@/auth/types";
 
 const MAX_BYTES = 8 * 1024 * 1024;
 
@@ -268,11 +269,18 @@ export function JobRecommenderWorkspace() {
   const [promptJobs, setPromptJobs] = useState<JobCardData[]>([]);
   const [promptMessage, setPromptMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
+  const controllerRef = useRef<AbortController | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [prompt, setPrompt] = useState("");
   const [targetRole, setTargetRole] = useState("");
   const [seniorityLevel, setSeniorityLevel] = useState("");
+  const [fallbackUsed, setFallbackUsed] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      controllerRef.current?.abort();
+    };
+  }, []);
 
   useEffect(() => {
     if (status === "loading") return;
@@ -304,7 +312,7 @@ export function JobRecommenderWorkspace() {
         if (status === "unauthenticated") {
           data = await getJobRecommendationsUnloggedInUser();
         } else if (isPremium) {
-          data = await getJobRecommendationsPremiumUser("", role, seniority);
+          data = await getJobRecommendationsPremiumUser("", role, seniority, setFallbackUsed);
         } else {
           data = await getJobRecommendationsFreeUser(role, seniority);
         }
@@ -357,7 +365,7 @@ export function JobRecommenderWorkspace() {
     setError(null);
     setMode("recommendations");
     try {
-      const data = await getJobRecommendationsPremiumUser();
+      const data = await getJobRecommendationsPremiumUser("", targetRole, seniorityLevel, setFallbackUsed);
       const payload = extractJobsPayload(data);
       setJobs(payload.jobs);
       if (payload.jobs.length === 0) {
@@ -373,7 +381,11 @@ export function JobRecommenderWorkspace() {
   }
 
   async function onPromptSearch() {
-    // TODO: implement abortcontroller to cancel the search if the user cancels the search.
+
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
+
     if (!file) {
       toast.error("Upload a PDF resume first.");
       return;
@@ -386,7 +398,12 @@ export function JobRecommenderWorkspace() {
     setPhase("searching");
     setError(null);
     try {
-      const data = await jobSearchWithPrompt(file, prompt.trim());
+      const options: AuthOptions = {
+        signal: controller.signal,
+        timeout: 180_000,
+      };
+      const data = await jobSearchWithPrompt(file, prompt.trim(), options);
+      if (controller.signal.aborted || controllerRef.current !== controller) return;
       const payload = extractJobsPayload(data);
       setPromptJobs(payload.jobs);
       setPromptMessage(payload.message ?? null);
@@ -395,10 +412,14 @@ export function JobRecommenderWorkspace() {
         toast.info(payload.message || "Search finished with no listings.");
       }
     } catch (err) {
+      if (controller.signal.aborted || controllerRef.current !== controller) return;
       const message = getErrorMessage(err, "Job search failed. Please try again.");
       toast.error(message);
     } finally {
-      setPhase("idle");
+      if (controllerRef.current === controller) {
+        controllerRef.current = null;
+        setPhase("idle");
+      }
     }
   }
 
@@ -494,8 +515,8 @@ export function JobRecommenderWorkspace() {
               {mode === "prompt"
                 ? "Jobs from your prompt"
                 : status === "authenticated"
-                  ? isPremium
-                    ? "Matched to your resume"
+                  ? (isPremium && !fallbackUsed)
+                    ? "Matched to your latest resume"
                     : "Suggested for you"
                   : "Openings nearby"}
             </h2>
@@ -539,39 +560,6 @@ export function JobRecommenderWorkspace() {
             ) : null}
           </div>
         </div>
-
-        {status === "authenticated" && !isPremium && mode === "recommendations" ? (
-          <div className="jobs-filters">
-            <label className="jobs-filter">
-              <span>Target role</span>
-              <input
-                type="text"
-                value={targetRole}
-                onChange={(event) => setTargetRole(event.target.value)}
-                placeholder="developer, engineer, manager, etc."
-              />
-            </label>
-            <label className="jobs-filter">
-              <span>Seniority</span>
-              <input
-                type="text"
-                value={seniorityLevel}
-                onChange={(event) => setSeniorityLevel(event.target.value)}
-                placeholder="junior, mid, senior, etc."
-              />
-            </label>
-            <button
-              type="button"
-              className="mkt-btn mkt-btn-primary jobs-filter-apply"
-              disabled={isBusy}
-              onClick={() => {
-                void refreshFreeRecommendations();
-              }}
-            >
-              Apply filters
-            </button>
-          </div>
-        ) : null}
 
         {promptMessage && mode === "prompt" && phase === "idle" ? (
             <p className="jobs-ai-message">{promptMessage}</p>
