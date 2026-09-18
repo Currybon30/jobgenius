@@ -22,6 +22,13 @@ services:
       default:
         aliases:
           - api.jobgenius.local
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 1m30s
+      timeout: 30s
+      retries: 3
+      start_period: 30s
     
   # Service 2: Arq Worker for background tasks
   worker:
@@ -30,6 +37,7 @@ services:
     command: ["arq", "app.bg_worker.WorkerSettings"]
     env_file:
       - ./api_server/.env
+    restart: unless-stopped
     depends_on:
       - redis
       - mongodb
@@ -52,6 +60,13 @@ services:
       - redis
       - mysql
       - api_server
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 1m30s
+      timeout: 30s
+      retries: 3
+      start_period: 30s
     
   # Service 4: Redis
   redis:
@@ -59,6 +74,13 @@ services:
     image: redis:latest
     ports:
       - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
   
   # Service 5: MongoDB
   mongodb:
@@ -68,6 +90,13 @@ services:
       - "27017:27017"
     volumes:
       - ${MONGO_DATA_DIR:-./mongo_data}:/data/db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
   
   # Service 6: Pinecone local
   pinecone:
@@ -83,6 +112,7 @@ services:
       default:
         aliases:
           - pinecone.local
+    restart: unless-stopped
 
   # Service 7: MySQL (Alternative run with XAMPP)
   mysql:
@@ -96,19 +126,30 @@ services:
       - ./.env
     volumes:
       - ${MYSQL_DATA_DIR:-./mysql_data}:/var/lib/mysql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   phpmyadmin:
     container_name: phpmyadmin
     image: phpmyadmin:latest
     ports:
       - "8080:80"
+    env_file:
+      - ./.env
     environment:
       PMA_HOST: ${PHPMYADMIN_MYSQL_HOST}
       PMA_PORT: ${PHPMYADMIN_MYSQL_PORT}
       PMA_USER: ${PHPMYADMIN_MYSQL_USER}
       PMA_PASSWORD: ${PHPMYADMIN_MYSQL_PASSWORD}
+    restart: unless-stopped
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     
   # Service 8: LocalStack
   localstack:
@@ -118,6 +159,8 @@ services:
       - '127.0.0.1:4566:4566' # LocalStack gateway
       - '127.0.0.1:4510-4559:4510-4559' # external services port range
       - '127.0.0.1:443:443' # LocalStack HTTPS Gateway
+    env_file:
+      - ./.env
     environment:
       # Activate LocalStack for AWS: https://docs.localstack.cloud/getting-started/auth-token/
       - LOCALSTACK_AUTH_TOKEN=${LOCALSTACK_AUTH_TOKEN:?}
@@ -127,6 +170,13 @@ services:
     volumes:
       - ${LOCALSTACK_DATA_DIR:-./localstack_data}:/var/lib/localstack
       - '/var/run/docker.sock:/var/run/docker.sock' # Docker socket for LocalStack to manage containers
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 1m30s
 
   # Service 9: Stripe
   stripe:
@@ -136,7 +186,8 @@ services:
     env_file:
       - ./.env
     depends_on:
-      - auth_server
+      auth_server:
+        condition: service_healthy
     command: listen --api-key ${STRIPE_SECRET_KEY} --forward-to http://auth-server:5000/api/stripe/webhook --skip-update --skip-verify
 
   # Service 10: Ollama
@@ -160,7 +211,8 @@ services:
     restart: unless-stopped
     pull_policy: always # pull the latest image from the registry
     tty: true # enable TTY for interactive mode
-    # GPU resources for ollama (uncomment if you have a GPU)
+    
+    #* GPU resources for ollama (uncomment if you have a GPU)
     deploy:
       resources:
         reservations:
@@ -169,7 +221,8 @@ services:
               count: 1
               capabilities: [gpu]
 
-  # Service 11: Ollama WebUI (uncomment if you want to use the ollama web)
+  #* uncomment if you want to use the ollama webui
+  # Service 11: Ollama WebUI 
   # ollama_webui:
   #   container_name: ollama_webui
   #   image: ghcr.io/ollama-webui/ollama-webui:main
