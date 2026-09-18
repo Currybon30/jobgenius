@@ -1,5 +1,5 @@
 # Builder stage
-FROM eclipse-temurin:17-jdk-alpine AS builder
+FROM eclipse-temurin:17-jdk-noble AS builder
 LABEL org.opencontainers.image.authors="Tuong Nguyen Pham <tuongnguyen2004danang@gmail.com>"
 WORKDIR /app
 
@@ -15,8 +15,14 @@ COPY src ./src
 RUN ./mvnw clean package -DskipTests
 
 # Runtime stage
-FROM eclipse-temurin:17-jdk-alpine
+FROM eclipse-temurin:17-jdk-noble
 WORKDIR /app
 COPY --from=builder /app/target/*.jar app.jar
+# Make the application files accessible to the non-root user
+RUN useradd --create-home nonrootuser \
+    && chown -R nonrootuser:nonrootuser /app
+
+# Run the application as the non-root user
+USER nonrootuser
 EXPOSE 5000
 CMD ["java", "-jar", "app.jar"]
