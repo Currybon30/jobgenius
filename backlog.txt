@@ -1,5 +1,5 @@
 Tuong Nguyen Pham
-Updated on Sep 16, 2026
+Updated on Sep 17, 2026
 
 Upcoming implementations:
 - frontend (my account page, usage & billing, settings & privacy)
@@ -44,6 +44,4 @@ Traffic test:
 - Using JMeter to test the traffic of the API.
 
 Docker Optimization & Security Enhancements & Hub Deployment:
-- Optimize the Docker images to reduce the size of the images.
-- Add security enhancements to the Docker images.
 - Deploy the Docker images to the Docker Hub.
