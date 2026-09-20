@@ -123,7 +123,7 @@ JobGenius acts as a sharp, impartial career mentor. Upload your resume (and opti
 <!-- DEMO -->
 
 ## Demo
-
+Updating...
 <!-- TECHNOLOGIES -->
 
 ## Technologies
