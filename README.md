@@ -124,14 +124,17 @@ JobGenius acts as a sharp, impartial career mentor. Upload your resume (and opti
 
 ## Demo
 <div align="center">
-  <img width="1461" height="712" alt="screenshot-09_20, 08_14_45 AM" src="https://github.com/user-attachments/assets/2dc03abe-9785-4254-b61a-c4984e83d9b4" />
+  <img width="1000" alt="JobGenius Home Page" src="https://github.com/user-attachments/assets/2dc03abe-9785-4254-b61a-c4984e83d9b4" />
+  <p><em>Landing page — discover what JobGenius can do and jump straight into the analyzer</em></p>
 
-  <img width="1458" height="712" alt="screenshot-09_20, 08_31_58 AM" src="https://github.com/user-attachments/assets/4ab1ddf5-ad26-4185-8f82-4a8abd72d6e6" />
+  <img width="1000" alt="JobGenius Resume Analyzer" src="https://github.com/user-attachments/assets/4ab1ddf5-ad26-4185-8f82-4a8abd72d6e6" />
+  <p><em>Resume Analyzer — upload your PDF, optionally paste a job description and career goal, then hit Analyze</em></p>
 
-  <img width="1461" height="712" alt="screenshot-09_20, 08_26_58 AM" src="https://github.com/user-attachments/assets/051865e0-11ff-4123-83f9-e7bbff6a1e80" />
+  <img width="1000" alt="JobGenius Waiting for Analysis" src="https://github.com/user-attachments/assets/051865e0-11ff-4123-83f9-e7bbff6a1e80" />
+  <p><em>Processing — the multi-agent AI pipeline parses, scores, and coaches in real time</em></p>
 
-  <img width="1461" height="712" alt="screenshot-09_20, 08_28_16 AM" src="https://github.com/user-attachments/assets/1452cb2f-1047-445e-9248-1ef66179349c" />
-
+  <img width="1000" alt="JobGenius Analysis Results" src="https://github.com/user-attachments/assets/1452cb2f-1047-445e-9248-1ef66179349c" />
+  <p><em>Results dashboard — ATS score breakdown, skill gap analysis, and actionable coaching tips at a glance</em></p>
 
 </div>
 
