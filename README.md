@@ -443,7 +443,7 @@ JobGenius is under active development. Items below are planned next; checked ite
 - [ ] Premium job recommendations — loading notice while semantic matching runs (seconds to minutes)
 - [x] Project `README.md` (setup, usage, stack documentation)
 
-**Note:** *This roadmap is subject to change anytime. Please visit the [issue tracker](https://github.com/Currybon30/jobgenius/issues/1) for the most up-to-date information.*
+**Note:** *This roadmap is subject to change anytime. Please visit the [roadmap tracker](https://github.com/Currybon30/jobgenius/issues/1) for the most up-to-date information.*
 
 See the [open issues](https://github.com/Currybon30/jobgenius/issues) for discussion, or [open a new issue](https://github.com/Currybon30/jobgenius/issues/new) to suggest a feature.
 
