@@ -123,7 +123,18 @@ JobGenius acts as a sharp, impartial career mentor. Upload your resume (and opti
 <!-- DEMO -->
 
 ## Demo
-Updating...
+<div align="center">
+  <img width="1461" height="712" alt="screenshot-09_20, 08_14_45 AM" src="https://github.com/user-attachments/assets/2dc03abe-9785-4254-b61a-c4984e83d9b4" />
+
+  <img width="1458" height="712" alt="screenshot-09_20, 08_31_58 AM" src="https://github.com/user-attachments/assets/4ab1ddf5-ad26-4185-8f82-4a8abd72d6e6" />
+
+  <img width="1461" height="712" alt="screenshot-09_20, 08_26_58 AM" src="https://github.com/user-attachments/assets/051865e0-11ff-4123-83f9-e7bbff6a1e80" />
+
+  <img width="1461" height="712" alt="screenshot-09_20, 08_28_16 AM" src="https://github.com/user-attachments/assets/1452cb2f-1047-445e-9248-1ef66179349c" />
+
+
+</div>
+
 <!-- TECHNOLOGIES -->
 
 ## Technologies
