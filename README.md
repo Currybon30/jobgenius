@@ -123,7 +123,7 @@ JobGenius acts as a sharp, impartial career mentor. Upload your resume (and opti
 <!-- DEMO -->
 
 ## Demo
-
+Updating...
 <!-- TECHNOLOGIES -->
 
 ## Technologies
@@ -443,7 +443,7 @@ JobGenius is under active development. Items below are planned next; checked ite
 - [ ] Premium job recommendations — loading notice while semantic matching runs (seconds to minutes)
 - [x] Project `README.md` (setup, usage, stack documentation)
 
-**Note:** *This roadmap is subject to change anytime. Please visit the [issue tracker](https://github.com/Currybon30/jobgenius/issues/1) for the most up-to-date information.*
+**Note:** *This roadmap is subject to change anytime. Please visit the [roadmap tracker](https://github.com/Currybon30/jobgenius/issues/1) for the most up-to-date information.*
 
 See the [open issues](https://github.com/Currybon30/jobgenius/issues) for discussion, or [open a new issue](https://github.com/Currybon30/jobgenius/issues/new) to suggest a feature.
 
@@ -502,9 +502,9 @@ Thanks to everyone who builds and maintains these tools.
 [stars-url]: https://github.com/Currybon30/jobgenius/stargazers
 [issues-shield]: https://img.shields.io/github/issues/Currybon30/jobgenius.svg?style=for-the-badge
 [issues-url]: https://github.com/Currybon30/jobgenius/issues
-[license-shield]: https://img.shields.io/github/license/Currybon30/jobgenius.svg?style=for-the-badge
+[license-shield]: https://img.shields.io/github/license/Currybon30/jobgenius?style=for-the-badge
 [license-url]: https://github.com/Currybon30/jobgenius/blob/main/LICENSE
-[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
+[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-0A66C2.svg?style=for-the-badge&logo=linkedin&logoColor=white
 [linkedin-url]: https://www.linkedin.com/in/tuongnguyenpham/
 [product-screenshot]: images/screenshot.png
 <!-- Shields.io badges. You can a comprehensive list with many more badges at: https://github.com/inttter/md-badges -->
