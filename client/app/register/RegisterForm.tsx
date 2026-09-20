@@ -8,7 +8,6 @@ import { toast } from "react-toastify";
 import "./register.css";
 import { handleRegister } from "@/auth/api";
 import { RegisterRequest } from "@/auth/types";
-import { AdjustUserFullName } from "@/utils/userFullNameHelpers";
 
 export function RegisterForm() {
   const router = useRouter();
@@ -19,13 +18,8 @@ export function RegisterForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [country, setCountry] = useState("");
 
   useEffect(() => {
-    axios.get("http://ip-api.com/json").then((res) => {
-      setCountry(res.data.country);
-    });
-
     return () => {
       controllerRef.current?.abort();
     };
@@ -45,7 +39,7 @@ export function RegisterForm() {
     const controller = new AbortController();
     controllerRef.current = controller;
     try {
-      let name = AdjustUserFullName(firstname, lastname, country);
+      let name = `${lastname} ${firstname}`;
 
       const registerRequest: RegisterRequest = {
         name,
