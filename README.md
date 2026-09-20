@@ -10,7 +10,7 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/Currybon30/jobgenius">
+  <a href="https://github.com/tnp0911/jobgenius">
     <img src="images/logo.png" alt="Logo" width="100" height="100">
   </a>
 
@@ -21,7 +21,7 @@
 
   [![Architecture](https://img.shields.io/badge/Architecture-Microservices-blue.svg)](#technologies)
   <p align="center">
-    <a href="https://github.com/Currybon30/jobgenius/issues/new">Report Issue</a>
+    <a href="https://github.com/tnp0911/jobgenius/issues/new">Report Issue</a>
   </p>
 </div>
 
@@ -145,8 +145,8 @@ JobGenius acts as a sharp, impartial career mentor. Upload your resume (and opti
 | Category | Technologies |
 |----------|-------------|
 | **Frontend** | ![Next.js](https://img.shields.io/badge/Next.js_16-000000?style=for-the-badge&logo=nextdotjs&logoColor=white) ![React](https://img.shields.io/badge/React_19-61DAFB?style=for-the-badge&logo=react&logoColor=black) ![TypeScript](https://img.shields.io/badge/TypeScript_5-3178C6?style=for-the-badge&logo=typescript&logoColor=white) ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS_4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white) ![Axios](https://img.shields.io/badge/Axios-5A29E4?style=for-the-badge&logo=axios&logoColor=white) |
-| **API Server** [README](https://github.com/Currybon30/jobgenius/blob/main/api_server/README.md) | ![Python](https://img.shields.io/badge/Python_3.11-3776AB?style=for-the-badge&logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI_0.135-009688?style=for-the-badge&logo=fastapi&logoColor=white) ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-D71F00?style=for-the-badge&logo=sqlalchemy&logoColor=white) ![Pydantic](https://img.shields.io/badge/Pydantic_v2-E92063?style=for-the-badge&logo=pydantic&logoColor=white) ![Uvicorn](https://img.shields.io/badge/Uvicorn-2F4F4F?style=for-the-badge&logo=gunicorn&logoColor=white) ![ARQ](https://img.shields.io/badge/ARQ-Worker_%26_Queue-DC382D?style=for-the-badge&logo=redis&logoColor=white) |
-| **Auth Server** [README](https://github.com/Currybon30/jobgenius/blob/main/auth_server/README.md) | ![Java](https://img.shields.io/badge/Java_17-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white) ![Spring Boot](https://img.shields.io/badge/Spring_Boot_3.2.5-6DB33F?style=for-the-badge&logo=springboot&logoColor=white) ![Spring Security](https://img.shields.io/badge/Spring_Security-6DB33F?style=for-the-badge&logo=springsecurity&logoColor=white) ![Hibernate](https://img.shields.io/badge/Hibernate-59666C?style=for-the-badge&logo=hibernate&logoColor=white) ![Stripe](https://img.shields.io/badge/Stripe-635BFF?style=for-the-badge&logo=stripe&logoColor=white) |
+| **API Server** [README](https://github.com/tnp0911/jobgenius/blob/main/api_server/README.md) | ![Python](https://img.shields.io/badge/Python_3.11-3776AB?style=for-the-badge&logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI_0.135-009688?style=for-the-badge&logo=fastapi&logoColor=white) ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-D71F00?style=for-the-badge&logo=sqlalchemy&logoColor=white) ![Pydantic](https://img.shields.io/badge/Pydantic_v2-E92063?style=for-the-badge&logo=pydantic&logoColor=white) ![Uvicorn](https://img.shields.io/badge/Uvicorn-2F4F4F?style=for-the-badge&logo=gunicorn&logoColor=white) ![ARQ](https://img.shields.io/badge/ARQ-Worker_%26_Queue-DC382D?style=for-the-badge&logo=redis&logoColor=white) |
+| **Auth Server** [README](https://github.com/tnp0911/jobgenius/blob/main/auth_server/README.md) | ![Java](https://img.shields.io/badge/Java_17-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white) ![Spring Boot](https://img.shields.io/badge/Spring_Boot_3.2.5-6DB33F?style=for-the-badge&logo=springboot&logoColor=white) ![Spring Security](https://img.shields.io/badge/Spring_Security-6DB33F?style=for-the-badge&logo=springsecurity&logoColor=white) ![Hibernate](https://img.shields.io/badge/Hibernate-59666C?style=for-the-badge&logo=hibernate&logoColor=white) ![Stripe](https://img.shields.io/badge/Stripe-635BFF?style=for-the-badge&logo=stripe&logoColor=white) |
 | **AI & ML** | ![LangChain](https://img.shields.io/badge/LangChain-7FC8FF?style=for-the-badge&logo=langchain&logoColor=white) ![LangGraph](https://img.shields.io/badge/LangGraph-7FC8FF?style=for-the-badge&logo=langgraph&logoColor=white) ![FastMCP](https://img.shields.io/badge/FastMCP-Job_Finder_Tools-009688?style=for-the-badge&logo=fastapi&logoColor=white) ![Ollama](https://img.shields.io/badge/Ollama-000000?style=for-the-badge&logo=ollama&logoColor=white) ![Qwen 2.5 7B](https://img.shields.io/badge/Qwen_2.5_7B-7C3AED?style=for-the-badge&logoColor=white) ![Nomic](https://img.shields.io/badge/Nomic_Embed_v2-4B5563?style=for-the-badge&logoColor=white) |
 | **Databases & Storage** | ![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white) ![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white) ![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white) ![Pinecone](https://img.shields.io/badge/Pinecone-000000?style=for-the-badge&logoColor=white) ![Amazon S3](https://img.shields.io/badge/Amazon_S3-569A31?style=for-the-badge&logo=amazons3&logoColor=white) |
 | **Infrastructure** | ![Docker](https://img.shields.io/badge/Docker_Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white) ![LocalStack](https://img.shields.io/badge/LocalStack-4B4DD3?style=for-the-badge&logoColor=white) ![JWT](https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white) ![OAuth 2.0](https://img.shields.io/badge/OAuth_2.0-EB5424?style=for-the-badge&logo=auth0&logoColor=white) |
@@ -181,7 +181,7 @@ Ensure you have the following installed before proceeding:
 
 **1. Clone the repository**
 ```sh
-git clone https://github.com/Currybon30/jobgenius.git
+git clone https://github.com/tnp0911/jobgenius.git
 cd jobgenius
 ```
 
@@ -457,13 +457,13 @@ JobGenius is under active development. Items below are planned next; checked ite
 - [ ] Premium job recommendations — loading notice while semantic matching runs (seconds to minutes)
 - [x] Project `README.md` (setup, usage, stack documentation)
 
-**Note:** *This roadmap is subject to change anytime. Please visit the [roadmap tracker](https://github.com/Currybon30/jobgenius/issues/1) for the most up-to-date information.*
+**Note:** *This roadmap is subject to change anytime. Please visit the [roadmap tracker](https://github.com/tnp0911/jobgenius/issues/1) for the most up-to-date information.*
 
-See the [open issues](https://github.com/Currybon30/jobgenius/issues) for discussion, or [open a new issue](https://github.com/Currybon30/jobgenius/issues/new) to suggest a feature.
+See the [open issues](https://github.com/tnp0911/jobgenius/issues) for discussion, or [open a new issue](https://github.com/tnp0911/jobgenius/issues/new) to suggest a feature.
 
 ## License
 
-Distributed under the GNU Affero General Public License v3.0 License. See [LICENSE](https://github.com/Currybon30/jobgenius/blob/main/LICENSE) for more information.
+Distributed under the GNU Affero General Public License v3.0 License. See [LICENSE](https://github.com/tnp0911/jobgenius/blob/main/LICENSE) for more information.
 
 <!-- ACKNOWLEDGEMENTS -->
 
@@ -510,14 +510,14 @@ Thanks to everyone who builds and maintains these tools.
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[forks-shield]: https://img.shields.io/github/forks/Currybon30/jobgenius.svg?style=for-the-badge
-[forks-url]: https://github.com/Currybon30/jobgenius/network/members
-[stars-shield]: https://img.shields.io/github/stars/Currybon30/jobgenius.svg?style=for-the-badge
-[stars-url]: https://github.com/Currybon30/jobgenius/stargazers
-[issues-shield]: https://img.shields.io/github/issues/Currybon30/jobgenius.svg?style=for-the-badge
-[issues-url]: https://github.com/Currybon30/jobgenius/issues
-[license-shield]: https://img.shields.io/github/license/Currybon30/jobgenius?style=for-the-badge
-[license-url]: https://github.com/Currybon30/jobgenius/blob/main/LICENSE
+[forks-shield]: https://img.shields.io/github/forks/tnp0911/jobgenius.svg?style=for-the-badge
+[forks-url]: https://github.com/tnp0911/jobgenius/network/members
+[stars-shield]: https://img.shields.io/github/stars/tnp0911/jobgenius.svg?style=for-the-badge
+[stars-url]: https://github.com/tnp0911/jobgenius/stargazers
+[issues-shield]: https://img.shields.io/github/issues/tnp0911/jobgenius.svg?style=for-the-badge
+[issues-url]: https://github.com/tnp0911/jobgenius/issues
+[license-shield]: https://img.shields.io/github/license/tnp0911/jobgenius?style=for-the-badge
+[license-url]: https://github.com/tnp0911/jobgenius/blob/main/LICENSE
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-0A66C2.svg?style=for-the-badge&logo=linkedin&logoColor=white
 [linkedin-url]: https://www.linkedin.com/in/tuongnguyenpham/
 [product-screenshot]: images/screenshot.png
