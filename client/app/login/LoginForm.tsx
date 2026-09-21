@@ -69,7 +69,7 @@ export function LoginForm() {
     <div className="wrapper">
       <h2>Login to JobGenius</h2>
 
-      <form onSubmit={handleSubmit} className="login-form" autoComplete="off">
+      <form onSubmit={handleSubmit} className="login-form">
         <div className="input-field">
           <input
             id="email"

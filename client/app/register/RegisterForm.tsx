@@ -39,7 +39,7 @@ export function RegisterForm() {
     const controller = new AbortController();
     controllerRef.current = controller;
     try {
-      let name = `${lastname} ${firstname}`;
+      const name: string = `${lastname} ${firstname}`;
 
       const registerRequest: RegisterRequest = {
         name,
@@ -61,9 +61,9 @@ export function RegisterForm() {
           );
         }
       } else if (error instanceof Error) {
-        toast.error("Login failed: " + error.message);
+        toast.error("Registration failed: " + error.message);
       } else {
-        toast.error("Login failed");
+        toast.error("Registration failed. Please try again later.");
       }
     } finally {
       if (controllerRef.current === controller) {
