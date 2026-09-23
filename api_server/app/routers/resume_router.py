@@ -61,7 +61,13 @@ async def analyze_resume_free_tier_route(
                 redis_client = get_redis_client()
                 usage_key = f"free_resume_analyzer_usage:{current_user_id}"
         resume_bytes = await convert_file_to_bytes(resume_pdf)
-        resume_text = extract_text_from_resume(resume_pdf, resume_bytes)
+        resume_filename = resume_pdf.filename
+        if not resume_filename:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Filename is missing. Please provide a proper filename.",
+            )
+        resume_text = extract_text_from_resume(resume_filename, resume_bytes)
         free_tier_analyzer = await build_free_tier_graph()
         state: FreeTierGraphState = {
             "resume_text": resume_text,
@@ -155,7 +161,19 @@ async def analyze_resume_premium_route(
             if job_finder_usage and int(job_finder_usage) > JOB_FINDER_LIMIT:
                 message = f"You have reached the maximum number of job finder calls for {JOB_FINDER_RESET_WINDOW} days. We will disable the job finder feature for you in this session. Please try again in {JOB_FINDER_RESET_WINDOW} days."
                 includes_job_finder = False
-
+                
+        resume_bytes = await convert_file_to_bytes(resume_pdf)
+        if not resume_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File is empty.",
+            )
+        resume_filename = resume_pdf.filename
+        if not resume_filename:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Filename is missing. Please provide a proper filename.",
+            )
         await redis_client.hset(
             f"resume_analysis:{job_id}:progress",
             mapping={
@@ -168,7 +186,8 @@ async def analyze_resume_premium_route(
             "analyze_resume_premium_arq",
             job_id,
             current_user_id,
-            resume_pdf,
+            resume_filename,
+            resume_bytes,
             jd_text,
             user_goal,
             includes_job_finder,

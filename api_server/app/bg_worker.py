@@ -40,24 +40,26 @@ async def analyze_resume_premium_arq(
     ctx,
     job_id: str,
     user_id: int,
-    resume_pdf,
+    resume_filename: str,
+    resume_bytes: bytes,
     jd_text: str,
     user_goal: str,
     includes_job_finder: bool,
     usage_key: str,
-    job_finder_usage_key: str
+    job_finder_usage_key: str,
 ):
     await analyze_resume_premium(
         job_id,
         user_id,
-        resume_pdf,
+        resume_filename,
+        resume_bytes,
         jd_text,
         user_goal,
         includes_job_finder,
         usage_key,
         job_finder_usage_key
     )
-    logger.info(f"Resume analyzed for user_id: {user_id}, job_id: {job_id}")
+    logger.info(f"Resume analyzed for user_id: {user_id}, job_id: {job_id}, filename: {resume_filename}")
 
 
 class WorkerSettings:
