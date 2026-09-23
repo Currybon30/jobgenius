@@ -1,6 +1,6 @@
 import json
 
-from app.db.redis import get_redis_client
+from app.db.redis import get_redis_client, init_redis
 
 
 async def update_progress(
@@ -12,7 +12,7 @@ async def update_progress(
         "progress": progress,
     }
     redis = get_redis_client()
-
+    
     if task == "resume":
         progress_key = f"resume_analysis:{job_id}:progress"
         # Persist latest state so late-connecting clients see current progress

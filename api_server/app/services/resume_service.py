@@ -2,15 +2,14 @@ import asyncio
 import hashlib
 import logging
 
-from botocore.exceptions import ClientError
-from bson import ObjectId
-from fastapi import HTTPException, status
-
 from app.core.config import settings
 from app.db.mongo import get_mongo_client
 from app.db.s3 import get_s3_client
 from app.helpers.resume_helper import analyzer_result_to_text, format_analyzer_result
 from app.models.resume import Resume, ResumeAnalysis, ResumeForJobRecommendation
+from botocore.exceptions import ClientError
+from bson import ObjectId
+from fastapi import HTTPException, status
 
 logger = logging.getLogger(__name__)
 

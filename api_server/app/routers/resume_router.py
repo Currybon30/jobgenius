@@ -32,7 +32,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import JSONResponse
-from fastapi.sse import EventSourceResponse, ServerSentEvent
+from fastapi.sse import EventSourceResponse
 
 logger = logging.getLogger(__name__)
 
@@ -161,7 +161,7 @@ async def analyze_resume_premium_route(
             if job_finder_usage and int(job_finder_usage) > JOB_FINDER_LIMIT:
                 message = f"You have reached the maximum number of job finder calls for {JOB_FINDER_RESET_WINDOW} days. We will disable the job finder feature for you in this session. Please try again in {JOB_FINDER_RESET_WINDOW} days."
                 includes_job_finder = False
-                
+
         resume_bytes = await convert_file_to_bytes(resume_pdf)
         if not resume_bytes:
             raise HTTPException(
@@ -228,19 +228,32 @@ async def get_resume_analysis_progress(
             detail="Unauthorized: User must be logged in to access.",
         )
 
-    redis_client = get_redis_client()
+    # Initialize redis for pubsub where socket_time is None for SSE connection
+    import redis.asyncio as redis
+    from app.core.config import settings
+
+    redis_client_pubsub = redis.Redis(
+        host=settings.REDIS_HOST,
+        port=settings.REDIS_PORT,
+        decode_responses=True,
+        encoding="utf-8",
+        socket_connect_timeout=3,
+        socket_timeout=None,
+        socket_keepalive=True,
+    )
 
     progress_key = f"resume_analysis:{job_id}:progress"
 
     # Subscribe FIRST to avoid missing events between hgetall and subscribe
-    pubsub = redis_client.pubsub()
+    pubsub = redis_client_pubsub.pubsub()
     await pubsub.subscribe(progress_key)
 
-    progress = await redis_client.hgetall(progress_key)  # type: ignore
+    progress = await redis_client_pubsub.hgetall(progress_key)  # type: ignore
 
     if not progress:
         await pubsub.unsubscribe(progress_key)
         await pubsub.close()
+        await pubsub.aclose()
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Analysis job not found.",
@@ -249,6 +262,7 @@ async def get_resume_analysis_progress(
     if str(progress.get("current_user_id")) != str(current_user.uid):
         await pubsub.unsubscribe(progress_key)
         await pubsub.close()
+        await pubsub.aclose()
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have access to this analysis.",
@@ -260,16 +274,7 @@ async def get_resume_analysis_progress(
             current_status = progress["status"]
             current_progress = int(progress["progress"])
 
-            yield ServerSentEvent(
-                event="progress",
-                data=json.dumps(
-                    {
-                        "job_id": job_id,
-                        "status": current_status,
-                        "progress": current_progress,
-                    }
-                ),
-            )
+            yield f"event: progress\ndata: {json.dumps({'job_id': job_id, 'status': current_status, 'progress': current_progress})}\n\n"
 
             # If already terminal, no need to listen further
             if current_status in {"COMPLETED", "FAILED"}:
@@ -279,10 +284,7 @@ async def get_resume_analysis_progress(
                 if message["type"] != "message":
                     continue
 
-                yield ServerSentEvent(
-                    event="progress",
-                    data=message["data"],
-                )
+                yield f"event: progress\ndata: {message['data']}\n\n"
 
                 # Stop once completed
                 data = json.loads(message["data"])
@@ -293,6 +295,7 @@ async def get_resume_analysis_progress(
         finally:
             await pubsub.unsubscribe(progress_key)
             await pubsub.close()
+            await pubsub.aclose()
 
     return EventSourceResponse(event_generator())  # type: ignore[arg-type]
 

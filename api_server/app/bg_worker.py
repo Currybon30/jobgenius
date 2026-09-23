@@ -3,11 +3,13 @@ import logging
 from typing import ClassVar
 
 from app.core.config import settings
+from app.db.arq import close_arq_pool, init_arq_pool
 from app.db.mongo import close_mongo, init_mongo
 from app.db.pinecone import close_pinecone, init_pinecone
+from app.db.redis import close_redis, init_redis
 from app.db.s3 import close_s3_client, init_s3_client
+from app.services.arq_logic import analyze_resume_premium
 from app.services.job_service import store_jobs_to_pinecone
-from app.services.resume_analyzer import analyze_resume_premium
 from app.services.resume_service import store_resume_to_mongodb
 from arq.connections import RedisSettings
 
@@ -15,12 +17,20 @@ logger = logging.getLogger(__name__)
 
 
 async def startup(ctx):
-    await asyncio.gather(init_mongo(), init_pinecone(), init_s3_client())
+    await asyncio.gather(
+        init_mongo(), init_pinecone(), init_s3_client(), init_redis(), init_arq_pool()
+    )
     logger.info("Background ARQ worker started")
 
 
 async def shutdown(ctx):
-    await asyncio.gather(close_mongo(), close_pinecone(), close_s3_client())
+    await asyncio.gather(
+        close_mongo(),
+        close_pinecone(),
+        close_s3_client(),
+        close_redis(),
+        close_arq_pool(),
+    )
     logger.info("Background ARQ worker stopped")
 
 
@@ -57,9 +67,11 @@ async def analyze_resume_premium_arq(
         user_goal,
         includes_job_finder,
         usage_key,
-        job_finder_usage_key
+        job_finder_usage_key,
     )
-    logger.info(f"Resume analyzed for user_id: {user_id}, job_id: {job_id}, filename: {resume_filename}")
+    logger.info(
+        f"Resume analyzed for user_id: {user_id}, job_id: {job_id}, filename: {resume_filename}"
+    )
 
 
 class WorkerSettings:
