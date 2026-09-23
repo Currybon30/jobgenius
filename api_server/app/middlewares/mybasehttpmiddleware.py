@@ -25,7 +25,7 @@ class MyBaseHTTPMiddleware(BaseHTTPMiddleware):
         try:
             if (
                 request.url.path.startswith("/internal/")
-                or request.url.path == "/health"
+                or request.url.path == "/health" or request.url.path == "/docs" or request.url.path == "/openapi.json"
             ):
                 response = await call_next(request)
                 logger.info("[STATUS CODE] Response: %s", response.status_code)
