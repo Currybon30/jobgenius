@@ -21,7 +21,7 @@ const NAV_LINKS = [
 const PROFILE_LINKS = [
   { label: "My Account", href: "/myaccount" },
   { label: "Settings & Privacy", href: "/settings_privacy" },
-  { label: "Usage & Billing", href: "/usage_billing" }
+  { label: "Billing & Subscription", href: "/billing_subscription" }
 ] as const;
 
 function ProfileIcon() {
