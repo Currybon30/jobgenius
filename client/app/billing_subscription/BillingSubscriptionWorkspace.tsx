@@ -306,7 +306,7 @@ export function BillingSubscriptionWorkspace() {
         </div>
         <div className="billing-plan-aside">
           <p className={`billing-plan-badge${isPremium ? " is-premium" : ""}`}>
-            {isPremium ? "Active" : "Free forever"}
+            {isPremium ? "Active" : "Forever"}
           </p>
           {isPremium ? (
             <p className="billing-plan-price">CAD $20 / month</p>
